@@ -8,11 +8,11 @@ Run automatically in run_parallel.sh
 import numpy as np
 import math as m
 import os.path
-from sys import exit
-
-import energy
+from sys import argv, exit
 
 from params import *
+import energy
+
 import domain as dom
 import initialise as ini
 
@@ -31,54 +31,59 @@ this_file = os.path.basename(__file__)
 ##           Functions to check that the input parameters are OK          ##
 ############################################################################
 
-
-def initial_check():
-    """ Just some initial checks """
-
-    if algorithm not in ('wang_landau','multicanonical','transition'):
-        error(this_file, "algorithm should be either 'wang_landau', 'multicanonical', or 'transition'.")
+def check_compatible(atoms_alpha, atoms_beta):
+    """ Check for equal atom numbers and densities """
     
-    if type(track_series) != bool:
-        error(this_file, "Track_series should be set to either True or False.")
+    Nalpha = atoms_alpha.get_number_of_atoms()
+    Nbeta  = atoms_beta.get_number_of_atoms()
 
-    if type(use_interpolated_weights) != bool:
-        error(this_file, "use_interpolated_weights should be set to either True or False.")
+    if Nalpha != Nbeta:
+        error(this_file, "Different numbers of atoms in each lattice.")
 
-    if (abs_olap>=0) == False or (0<=frac_olap<1) == False:
-        error(this_file, "Please set abs_olap >= 0 and 0 <= frac_olap < 1.")
+    if Nalpha != Natoms:
+        error(this_file, "Number of atoms does not match 'Natoms' in params.py.")
 
-    if type(TRAP) != bool:
-        error(this_file, "TRAP should be set to either True or False.")
+    dens_alpha = Nalpha / atoms_alpha.get_volume()
+    dens_beta  = Nbeta / atoms_beta.get_volume()
 
-    if eigvec_method not in ('sequential', 'arpack'):
-        error(this_file, "eigvec_method should be either 'sequential' or 'arpack'.")
+    if abs(dens_alpha - dens_beta) > 1e-10:
+        error(this_file, "Different density for each lattice.")
+
+    print "Lattice compatibility check OK." 
+    return
+
+
+def calibrate(atoms_alpha, atoms_beta):
+    """ Find the difference between the ideal lattice energies, to be
+    set as a constant parameter in params.py """
     
-    if algorithm != 'domain':
-        if len(boundaries) != Ns + 1 or len(bins) != Ns or len(rules) != Ns:
-            error(this_file, "Mismatch between number of subdomains and number of boundaries/bins/rules. \nMake sure there are Ns + 1 boundaries, Ns bins and Ns rules in params.py!")
+    alpha_energy = energy.compute_lattice_energy(
+                            atoms_alpha.positions,atoms_alpha.get_cell(),1)
+    beta_energy = energy.compute_lattice_energy(
+                            atoms_beta.positions,atoms_beta.get_cell(),0)
+
+    energy_ideal = alpha_energy
+    energy_diff = alpha_energy - beta_energy
+
+    if np.allclose(energy_ideal, E_ideal) == False: # rtol =1e-5, atol=1e-8
+        error(this_file, "Please set E_ideal = %.10f in params.py." %energy_ideal)
+    
+    if np.allclose(energy_diff, adjust) == False: # rtol =1e-5, atol=1e-8
+        error(this_file, "Please set adjust = %.10f in params.py." %energy_diff)
+
+    print "Ideal lattice energies and adjustment OK."
+    return
+
+
+def check_domain():
+    """ Check sensible subdomain strategy """
+        
+    if len(boundaries) != Ns + 1 or len(bins) != Ns or len(rules) != Ns:
+        error(this_file, "Mismatch between number of subdomains and number of boundaries/bins/rules. \nMake sure there are Ns + 1 boundaries, Ns bins and Ns rules in params.py!")
 
     for i in range(len(boundaries)-1):
         if boundaries[i+1] <= boundaries[i]:
             error(this_file, "Mu boundaries do not increase monotonically from left to right.")
-
-
-    # TRAP should be True for a weights-buildup
-    if algorithm == 'wang_landau':
-        if Ns != 1:
-            if TRAP == False:
-                error(this_file, "Please set TRAP = True for a Wang Landau simulation.")
-
-    # A few things need to be in place for a domain-finding simulation
-    if algorithm == 'domain':
-        if Ns != 2:
-            error(this_file, "Please set Ns = 2 for the domain-finding simulation.")
-
-    print "Initial params check OK."
-    return
-
-
-def check_subdomains():
-    """ Check sensible subdomain strategy """
 
     # These are center-of-bin values
     mu_s_cross = dom.get_local_mu_bins(dom.s_cross)
@@ -114,67 +119,35 @@ def check_subdomains():
     print "Subdomain strategy OK."
     return
 
-def check_compatible(atoms_alpha, atoms_beta):
-    """ Check for equal atom numbers and densities """
+def final_check():
+    """ Just some final checks """
+
+    if algorithm not in ('wang_landau','multicanonical','transition'):
+        error(this_file, "algorithm should be either 'wang_landau', 'multicanonical', or 'transition'.")
     
-    Nalpha = atoms_alpha.get_number_of_atoms()
-    Nbeta  = atoms_beta.get_number_of_atoms()
+    if type(track_series) != bool:
+        error(this_file, "Track_series should be set to either True or False.")
 
-    if Nalpha != Nbeta:
-        error(this_file, "Different numbers of atoms in each lattice.")
+    if type(use_interpolated_weights) != bool:
+        error(this_file, "use_interpolated_weights should be set to either True or False.")
 
-    if Nalpha != Natoms:
-        error(this_file, "Number of atoms does not match 'Natoms' in params.py.")
+    if (abs_olap>=0) == False or (0<=frac_olap<1) == False:
+        error(this_file, "Please set abs_olap >= 0 and 0 <= frac_olap < 1.")
 
-    dens_alpha = Nalpha / atoms_alpha.get_volume()
-    dens_beta  = Nbeta / atoms_beta.get_volume()
+    if type(TRAP) != bool:
+        error(this_file, "TRAP should be set to either True or False.")
 
-    if abs(dens_alpha - dens_beta) > 1e-10:
-        error(this_file, "Different density for each lattice.")
+    if eigvec_method not in ('sequential', 'arpack'):
+        error(this_file, "eigvec_method should be either 'sequential' or 'arpack'.")
+    
+    # TRAP should be True for a weights-buildup
+    if algorithm == 'wang_landau':
+        if Ns != 1:
+            if TRAP == False:
+                error(this_file, "Please set TRAP = True for a Wang Landau simulation.")
 
-    print "Lattice compatibility check OK." 
+    print "Final params check OK."
     return
-
-def check_shuffle_file():
-    """ Check for a file for shuffled indices. Create a new one if not. """
-
-    # Check if shuffle file exists
-    input_file = "shuffled_indices.out"
-    if os.path.exists(input_file) != True:
-        
-        # Any existing disp files should be deleted if the shuffle file has been lost
-        disp_file = alg.file_names('input', 0, 0)['d']
-        if os.path.exists(disp_file) == True:
-            error(this_file, "Unfortunately, since the shuffle file has been lost, the initial displacement vectors must be reset to zero. Please move or delete files %s etc." %disp_file)
-    
-        # Create a new array and file for shuffled indices
-        shuffled_indices = np.arange(Natoms)
-        np.random.shuffle(shuffled_indices)
-        print "Saving new shuffled indices to ", input_file
-        np.savetxt(input_file, shuffled_indices.astype(int), fmt='%i')
-
-
-def calibrate(atoms_alpha, atoms_beta):
-    """ Find the difference between the ideal lattice energies, to be
-    set as a constant parameter in params.py """
-    
-    alpha_energy = energy.compute_lattice_energy(
-                            atoms_alpha.positions,atoms_alpha.get_cell(),1)
-    beta_energy = energy.compute_lattice_energy(
-                            atoms_beta.positions,atoms_beta.get_cell(),0)
-
-    energy_ideal = alpha_energy
-    energy_diff = alpha_energy - beta_energy
-
-    if np.allclose(energy_ideal, E_ideal) == False: # rtol =1e-5, atol=1e-8
-        error(this_file, "Please set E_ideal = %.10f in params.py." %energy_ideal)
-    
-    if np.allclose(energy_diff, adjust) == False: # rtol =1e-5, atol=1e-8
-        error(this_file, "Please set adjust = %.10f in params.py." %energy_diff)
-
-    print "Ideal lattice energies and adjustment OK."
-    return
-
 
 def gen_input_files():
     """ If starting a new fixed-weights simulation, empty files will need
@@ -248,17 +221,54 @@ def gen_input_files():
     return
 
 
+def check_shuffle_file():
+    """ Check for a file for shuffled indices. Create a new one if not. """
+
+    # Check if shuffle file exists
+    input_file = "shuffled_indices.out"
+    if os.path.exists(input_file) != True:
+        
+        # Any existing disp files should be deleted if the shuffle file has been lost
+        disp_file = alg.file_names('input', 0, 0)['d']
+        if os.path.exists(disp_file) == True:
+            error(this_file, "Unfortunately, since the shuffle file has been lost, the initial displacement vectors must be reset to zero. Please move or delete files %s etc." %disp_file)
+    
+        # Create a new array and file for shuffled indices
+        shuffled_indices = np.arange(Natoms)
+        np.random.shuffle(shuffled_indices)
+        print "Saving new shuffled indices to ", input_file
+        np.savetxt(input_file, shuffled_indices.astype(int), fmt='%i')
+
+
+#################################################################
+## Call checking script to check specific groups of parameters ##
+#################################################################
+
+if len(argv) > 1:
+    if argv[1] == 'lattice':
+        # Create temporary supercells to perform checks
+        atoms_alpha = ini.build_supercell(np.zeros((Natoms,3)), alpha_vec, alpha_a, alpha_type)
+        atoms_beta = ini.build_supercell(np.zeros((Natoms,3)), beta_vec, beta_a, beta_type)
+        # Check that the supercells are compatible
+        check_compatible(atoms_alpha, atoms_beta)
+        
+        # Compare measured ideal lattice energies with those in params.py
+        calibrate(atoms_alpha, atoms_beta)
+
+    elif argv[1] == 'domain':
+        # Check that there is a bin boundary at mu = 0
+        check_domain()
+
+    elif argv[1] == 'final':
+        # Check sensible params.py values
+        final_check()
+    
+    exit(0)
 
 ############################################################################
 ##                              Execute Checks                            ##
 ############################################################################
 
-
-# Check sensible params.py values
-initial_check()
-
-# Check that there is a bin boundary at mu = 0
-check_subdomains()
 
 # Create temporary supercells to perform checks
 atoms_alpha = ini.build_supercell(np.zeros((Natoms,3)), alpha_vec, alpha_a, alpha_type)
@@ -267,15 +277,22 @@ atoms_beta = ini.build_supercell(np.zeros((Natoms,3)), beta_vec, beta_a, beta_ty
 # Check that the supercells are compatible
 check_compatible(atoms_alpha, atoms_beta)
 
+# Compare measured ideal lattice energies with those in params.py
+calibrate(atoms_alpha, atoms_beta)
+
+# Check that there is a bin boundary at mu = 0
+check_domain()
+
+# Check sensible params.py values
+final_check()
+
+# Generate input files if starting new fixed-weights run
+gen_input_files()
+
 # Check for a file containing the order by which atoms have been shuffled
 if alpha_type == beta_type:
     check_shuffle_file()
 
-# Compare measured ideal lattice energies with those in params.py
-calibrate(atoms_alpha, atoms_beta)
-
-# Generate input files if starting new fixed-weights run
-gen_input_files()
 
 print "Initial checks completed."
 print ""
@@ -286,7 +303,8 @@ print ""
 ##                        Print simulation info                          ##
 ###########################################################################
 
-
+print "Path to interaction potential: ", path_to_pot
+print ""
 print "Lattice Alpha: ", alpha_type, " with supercell vectors:"
 print atoms_alpha.get_cell()
 print "Lattice Beta: ", beta_type, " with supercell vectors:"
@@ -325,7 +343,10 @@ if algorithm in ('multicanonical', 'transition'):
         print "Standard deviation calculated with a running average of ", window, "dF's"
     else:
         print "Running for ", iterations, " iterations"
-
+if track_series == True:
+    print ""
+    print "Tracking data series: saving every %d steps" %int(sweeps_series/Natoms)
+print "Measuring simulation dynamics is set to: ", track_dynamics
 print ""
 print "Splitting into ", Np, "processes"
 print ""

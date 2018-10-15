@@ -3,14 +3,11 @@ Script.
 
 Performs post-processing steps for a series of data:
     Computes decorrelation time;
-    Counts round trips;
     Unfolds weights to give a histogram;
     Reweights to different temperatures * (* not yet implemented).
 
 Data is assumed to be in the following format (for each row):
-    subdomain  mu  increment  weights  E_active
-
-Increment accounts for varying bin widths in TRAP=False simulations.
+    subdomain  mu  weights  E_active
 
 Some rows will look like -1  -1  -1  -1. These indicate a change to a new, independently initiated simulation. 
 Independent simulations are dealt with separately since things like round-trip time and autocorrelation will be miscalculated otherwise.
@@ -71,8 +68,8 @@ for s in range(Ns_eff):
     print "Nbins = ",N_bins
 
     # Round-trip stuff
-    mu_lo = mu_bins[0]
-    mu_hi = mu_bins[-1]
+    mu_lo = mu_bins[N_bins/4]
+    mu_hi = mu_bins[3*(N_bins/4)]
     tracker = -1 # neutral (neither 0 or 1) initial value
     rt_rate_list = []
 

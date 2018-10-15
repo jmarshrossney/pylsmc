@@ -25,7 +25,7 @@ from params import *
 import domain as dom
 
 # Name of this file
-this_file = basename('__file__')
+this_file = basename(__file__)
 
 
 # Extract file name
@@ -51,7 +51,7 @@ else:
 
 # Check data and mu are the same size
 if len(input_data) != len(mu_bins):
-    error(this_file, "Length of input data does not match number of mu bins in subdomain "+s)
+    error(this_file, "Length of input data does not match number of mu bins in subdomain: "+s)
 
 
 # Plot parameters
@@ -68,9 +68,9 @@ ax.set_xlabel(r"$\mu \times \beta/N$")
 ax.tick_params(direction='in', top=True, right=True)
 
 
-#####################
-## Histogram data  ##
-#####################
+########################
+## Plotting functions ##
+########################
 if 'h' in argv:
     """ Plot a histogram """
     ax.set_ylabel("$h$")
@@ -91,7 +91,7 @@ if 'h' in argv:
     for k in range(1, len(b_arr)-1):
         plt.plot( [b_arr[k],b_arr[k]], [0,np.max(input_data)], 'k')
     
-
+# This is currently the same as above except axis labels
 elif 'w' in argv:
     """ Plot weights """
     ax.set_ylabel(r"$\eta(\mu)$")

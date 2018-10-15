@@ -10,14 +10,20 @@ Links processors to subdomains and sets up appropriate naming system.
 import numpy as np
 import math as m
 from os.path import exists, basename
-
+import sys
 from ase.lattice.cubic import FaceCenteredCubic, BodyCenteredCubic
 
+# Import params from parent directory
+path_to_params = '..'
+sys.path.insert(0, path_to_params) # looks in parent directory first
 from params import *
+sys.path.remove(path_to_params)
+
+# Import lsmc modules from this directory
 import domain as dom
 
 # Name of this file
-this_file = basename('__file__')
+this_file = basename(__file__)
 
 
 ############################
@@ -91,7 +97,7 @@ def map_proc_to_subdom(p):
         else: # 1 - 1 mapping processors to subdomains
             s = p
     else:
-        s = 0 # global
+        s = p % Ns # global, but initialise processes evenly across subdomains
     return s
 
 

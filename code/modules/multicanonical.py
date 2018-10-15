@@ -6,13 +6,20 @@ Contains functions specific to the multicanonical algorithm.
 
 import numpy as np
 from os.path import basename
+import sys
 
+# Import params from parent directory
+path_to_params = '..'
+sys.path.insert(0, path_to_params) # looks in parent directory first
 from params import *
+sys.path.remove(path_to_params)
+
+# Import lsmc modules from this directory
 import domain as dom
 import initialise as ini
 
 # Name of this file
-this_file = basename('__file__')
+this_file = basename(__file__)
 
 
 # Number of steps to run for before returning to main.py and recording dF
@@ -83,7 +90,7 @@ def refresh_func(binned_data):
     return
 
 
-def update_binned(step, binned_data, delta_local_energies,
+def update_func(step, binned_data, delta_local_energies,
             new_index, old_index, old_index_copy,
             old_mu, mu_bins,
             old_weight, get_weight, lendata, kTlogF, s):

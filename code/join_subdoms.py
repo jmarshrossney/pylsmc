@@ -10,9 +10,7 @@ but can also be run manually using the following arguments:
     
     argv[1] - 'w', 'c', 'h', 'e' for weights, Cmat, histogram, eigvec data
 
-    argv[2] - Optional. Filename STEM (in this case, everything before _sX.out). If none given uses filenames in params.py
-
-    argv[-1] - Optional. 'manual' and 'reverse' attempt to join subdomains by minimising the difference between overlap regions without using MBAR. If not included, MBAR is used.
+    argv[2] - Optional. Filename STEM (in this case, everything before _sX.out). If none given uses automatic filenames based on params.py
 
 Can also plot before/after join as a check - make sure to comment the plot requests out before running a long simulation!
 """
@@ -42,7 +40,7 @@ elif algorithm == 'transition':
     stage_in = 'pcomb'
 
 # Name of this file
-this_file = basename('__file__')
+this_file = basename(__file__)
 
 
 # Plotting parameters

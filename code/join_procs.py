@@ -10,7 +10,6 @@ import numpy as np
 from sys import argv
 from os.path import basename
 
-import energy
 from params import *
 import domain as dom
 import initialise as ini
@@ -20,7 +19,7 @@ elif algorithm == 'multicanonical': import multicanonical as alg
 elif algorithm == 'transition': import transition_matrix as alg
 
 # Name of this file
-this_file = basename('__file__')
+this_file = basename(__file__)
 
 
 if TRAP == True:
@@ -50,7 +49,7 @@ for s in range(Ns_eff):
     elif argv[1] == 'c':    
         data_comb = np.zeros( (size, size) )
     elif argv[1] == 's':
-        data_comb == np.array([])
+        data_comb = []
 
 
     # ------------------------------------------------------------ #
@@ -58,10 +57,11 @@ for s in range(Ns_eff):
     # ------------------------------------------------------------ #
     for p in p_list[s::Ns_eff]:
 
-        # Check correct mapping of processor to subdomain
-        s_check = ini.map_proc_to_subdom(p)
-        if s_check != s:
-            error(this_file, "Mapping p -> s has gone wrong \nExpected p%d -> s%d, but got s%d" %(p,s_check,s))
+        if TRAP == True:
+            # Check correct mapping of processor to subdomain
+            s_check = ini.map_proc_to_subdom(p)
+            if s_check != s:
+                error(this_file, "Mapping p -> s has gone wrong \nExpected p%d -> s%d, but got s%d" %(p,s_check,s))
 
         # Load files (output by main.py)
         input_file = alg.file_names('output', s, p)[argv[1]]
@@ -70,9 +70,14 @@ for s in range(Ns_eff):
         # Add to sum
         if argv[1] in ('h', 'c'):
             data_comb = data_comb + this_data
+        
         elif argv[1] == 's':
-            new_run_indicator = [np.ones(5)*-1,] # Need to distinguish between independent runs
-            data_comb = np.concatenate( (data_comb, new_run_indicator, this_data) )
+            ldc = len(data_comb)
+            tmp = np.zeros( (ldc+len(this_data), 4) )
+            if ldc > 0:
+                tmp[:ldc,:] = data_comb
+            tmp[ldc:,:] = this_data
+            data_comb = tmp
 
 
     # End sum over processors

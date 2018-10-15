@@ -6,9 +6,16 @@ Reads domain parameters from params.py and sets up a domain.
 
 import numpy as np
 import math as m
+from os.path import basename
+import sys
 
+# Import params from parent directory
+path_to_params = '..'
+sys.path.insert(0, path_to_params) # looks in parent directory first
 from params import *
+sys.path.remove(path_to_params)
 
+this_file = basename(__file__)
 
 ##################################
 ## Container for subdomain info ##

@@ -6,13 +6,20 @@ Contains functions specific to the Wang Landau algorithm.
 
 import numpy as np
 from os.path import exists, basename
+import sys
 
+# Import params from parent directory
+path_to_params = '..'
+sys.path.insert(0, path_to_params) # looks in parent directory first
 from params import *
+sys.path.remove(path_to_params)
+
+# Import lsmc modules from this directory
 import domain as dom
 import initialise as ini
 
 # Name of this file
-this_file = basename('__file__')
+this_file = basename(__file__)
 
 
 # Number of steps to take before only focusing on flatness
@@ -73,8 +80,8 @@ def load_inputs(s, p):
     input_files = file_names('input', s, p)
     
     disp = ini.file_input(input_files['d'], (Natoms, 3))
-
-    size = ini.get_size(s)  
+    
+    size = ini.get_size(s)
     weights = ini.file_input(input_files['w'], size)
     hist = ini.file_input(None, size)
 
@@ -88,7 +95,7 @@ def refresh_func(binned_data):
     return
 
 
-def update_binned(step, binned_data, delta_local_energies, 
+def update_func(step, binned_data, delta_local_energies, 
             new_index, old_index, old_index_copy,
             old_mu, mu_bins,
             old_weight, get_weight, lendata, kTlogF, s): 
@@ -133,9 +140,10 @@ def save_func(binned_data, mu_bins, step, s, p):
 #################################
 ## Save after each F iteration ##
 #################################
-def save_F(F, steps, binned_data, s):
+def save_F(F, counters, binned_data, s):
 
     # Save to F, sweeps file
+    steps = counters[0]
     Nsweeps = sweeps_relax + steps / Natoms
     with open("sweeps_allF_s"+str(s)+".out", 'a+') as f_handle:
         f_handle.write("%.10f %d\n" %(F, Nsweeps))

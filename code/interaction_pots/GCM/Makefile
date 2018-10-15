@@ -16,11 +16,6 @@ pot: $(OBJECTS)
 
 	$(F90) -shared -o _energy.so $(OBJECTS) 
 
-# Creates a second library/module for lattice switching purposes 
-dual: pot
-	cp energy.py energy2.py
-	cp _energy.so _energy2.so
-
 .PRECIOUS: %.o %_wrap.c
 .PHONY:  clean
 
@@ -38,6 +33,6 @@ dual: pot
 	$(SWIG) -python $<
 
 clean : 
-	rm -f _pot.so *.o energy_wrap.* energy.py energy2.py _energy2.so _energy.so *.mod *.pyc
+	rm -f _pot.so *.o energy_wrap.* energy.py energy2.py _energy2.so _energy.so *.mod
 
 

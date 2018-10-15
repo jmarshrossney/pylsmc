@@ -11,9 +11,10 @@ import numpy as np
 import math as m
 from os.path import basename
 
-import energy
 from params import *
+import energy
 import domain as dom
+import lsmc_dynamics as dyn
 
 # Import module corresponding to the type of algorithm being used
 if algorithm == 'wang_landau': import wang_landau as alg
@@ -21,7 +22,7 @@ elif algorithm == 'multicanonical': import multicanonical as alg
 elif algorithm == 'transition': import transition_matrix as alg
 
 # Name of this file
-this_file = basename('__file__')
+this_file = basename(__file__)
 
 
 #####################
@@ -101,7 +102,8 @@ def extrapolate(array):
 ##                                                                                    ##
 ########################################################################################
 
-def run(atoms_alpha, atoms_beta, disp, binned_data, F, p, s):
+
+def run(atoms_alpha, atoms_beta, disp, binned_data, dyn_data, F, p, s):
     
     # ------------------------------------------------- #
     #  Set simulation parameters and useful quantities  #
@@ -112,7 +114,7 @@ def run(atoms_alpha, atoms_beta, disp, binned_data, F, p, s):
     # Convert frequency parameters from sweeps to steps
     Nsteps = alg.Nsteps
     save_step = sweeps_save * Natoms
-    series_step = sweeps_series * Natoms
+    series_step = int(sweeps_series * Natoms)
     recalc_step = sweeps_recalc * Natoms
     refresh_step = sweeps_refresh * Natoms
 
@@ -131,25 +133,36 @@ def run(atoms_alpha, atoms_beta, disp, binned_data, F, p, s):
     # Set weights function
     if use_interpolated_weights == True:
         get_weight = interpolated_weight
+        
         # Need to add bins to the edges of mu and weights for extrapolation
         mu_bins = np.concatenate( (mu_bins, [0,0]) )
         extrapolate(mu_bins)
         binned_data['w'] = np.concatenate( (binned_data['w'], [0,0]) )
         extrapolate(binned_data['w'])
+        
+        # Need to do the same for cuts since it uses mu_bins
+        if track_dynamics == True:
+            dyn_data['cu'] = np.concatenate( (dyn_data['cu'], [0,0]) )
+
     else:
         get_weight = discrete_weight
 
 
-    # ----------------------- #
-    #  Initialise everything  #
-    # ----------------------- #
+    # ------------------------ #
+    #  Initialise usual stuff  #
+    # ------------------------ #
     # Get initial lattice energies and difference between them
     old_E_alpha, old_E_beta = lattice_energies(atoms_alpha, atoms_beta)
     old_mu = old_E_alpha - old_E_beta
     new_mu = old_mu 
-    old_index = get_index(old_mu, s)
+    
+    # For a global simulation, the initial subdomain (corresponding to the
+    # input disp vector) needs to be computed
+    if TRAP != True:
+        s = dom.get_subdomain(old_mu)
    
-    # Initial weight
+    # Initial index and weight
+    old_index = get_index(old_mu, s)
     old_weight = get_weight(old_mu, old_index, mu_bins, binned_data['w'])
     
     # Active lattice
@@ -162,14 +175,46 @@ def run(atoms_alpha, atoms_beta, disp, binned_data, F, p, s):
     
     # Flag for histogram flatness
     FLAT = 1 # start with 1 < f if wang-landau, otherwise f = 1 = FLAT
-
+    
     # Initialise counters
     step = 1
     moves = 0
     retakes = 0
     switches = 0
-    output_index = 0
     
+
+    # ---------------------------- #
+    #  Initialise 'dynamics' info  #
+    # ---------------------------- #
+    if track_dynamics == True:
+        
+        cuts = {'counter': 0,
+                'old_mu': old_mu,
+                'new_mu': old_mu}
+        
+        if TRAP == True:
+            rt_min = 0
+            rt_max = lendata-1
+        else:
+            rt_min = np.argmax( binned_data['w'][ mu_bins<0 ] )
+            rt_max = np.argmax( binned_data['w'][ mu_bins>0 ] ) + len(mu_bins[ mu_bins<0 ])
+        
+        rtrips = {'minmax': (0, rt_min, rt_max),
+                  'counts': 0,
+                  'flag': int(dyn_data['rt'][4])}
+                    
+        # Mini transition matrix only works for TRAP == True (due to indexing)
+        if TRAP == True:
+            minimat = {'counter': 0,
+                       'root_index': old_index,
+                       'old_index': dyn.get_minibin_index(old_mu, s, old_index),
+                       'Pprod': 1}
+
+        # Open files for edge dmu's
+        dyn_output_files = dyn.file_names('output', s, p)
+        l_edge_dmu = open(dyn_output_files['led'], 'a')
+        r_edge_dmu = open(dyn_output_files['red'], 'a')
+
 
     # --------------------------- #
     #  Open file for data series  #
@@ -177,8 +222,8 @@ def run(atoms_alpha, atoms_beta, disp, binned_data, F, p, s):
     if track_series == True:
         series_file = alg.file_names('output', s, p)['s']
         series = open(series_file, 'a')
-   
 
+   
     # ------------------------------------------------------------ #
     #  Main loop over individual particle moves + switch attempts  #
     # ------------------------------------------------------------ #
@@ -249,11 +294,30 @@ def run(atoms_alpha, atoms_beta, disp, binned_data, F, p, s):
         if new_mu < global_mu_min or new_mu > global_mu_max:
 
             # Update the bin from which the move was attempted
-            old_weight, FLAT = alg.update_binned(step, binned_data, delta_local_energies[ACT],
-                            old_index, old_index, old_index, # only update edge bin
-                            old_mu, mu_bins,
-                            old_weight, get_weight, lendata, kTlogF, s)
-        
+            old_weight, FLAT = alg.update_func(
+                        step, binned_data, delta_local_energies[ACT],
+                        old_index, old_index, old_index, # only update edge bin
+                        old_mu, mu_bins,
+                        old_weight, get_weight, lendata, kTlogF, s)
+            
+            if track_dynamics == True:
+                # Record size of attempted move out of (sub)domain
+                dmu = abs(new_mu - old_mu)
+                if new_mu < global_mu_min:
+                    l_edge_dmu.write("%f\n" %dmu)
+                elif new_mu > global_mu_max:
+                    r_edge_dmu.write("%f\n" %dmu)
+                
+                # Update data on simulation dynamics / mobility
+                dyn.update_func(
+                        dyn_data, mu_bins, old_mu, old_index, s,
+                        cuts, rtrips,
+                        False, dmu, abs(delta_local_energies[ACT]))
+              
+                if TRAP == True:
+                    dyn.update_minimat(dyn_data, mu_bins, old_mu, s,
+                            minimat, True, 0)
+
             # Undo lattice positions update
             atoms_alpha.positions[ipart,:] -= dr_alpha
             atoms_beta.positions[ipart,:] -= dr_beta
@@ -283,16 +347,17 @@ def run(atoms_alpha, atoms_beta, disp, binned_data, F, p, s):
 
         # Accept/reject trial move with weighted energy difference
         expnt = -B*(delta_local_energies[ACT] + augment)
-        result = accept_move(expnt)
+        accepted = accept_move(expnt)
        
         """ #Difference between bin-averaged weight and interpolated
         intra_bin_weight = old_weight - weights[old_index]
         #sampling_adjust = np.exp( B*intra_bin_weight ) # doesn't work: centre of bins?"""
-
-        old_index_copy = old_index # to update Cmat after move evaluation
+        
+        old_index_copy = old_index # to update Cmat and extra info after move evaluation
+        dmu = abs(new_mu-old_mu) # to update extra info
 
         # Update things according to whether move accepted
-        if result == True:
+        if accepted == True:
             disp[ipart,:] += dr
             old_E_alpha = new_E_alpha
             old_E_beta = new_E_beta
@@ -300,20 +365,42 @@ def run(atoms_alpha, atoms_beta, disp, binned_data, F, p, s):
             old_weight = new_weight
             old_mu = new_mu
             moves += 1
+
+            cuts_new_mu = new_mu
+
         else:
             atoms_alpha.positions[ipart,:] -= dr_alpha
             atoms_beta.positions[ipart,:] -= dr_beta
             s = old_s # Account for possible subdomain change
 
+            cuts_new_mu = old_mu
+
 
         # ------------------------ #
         #  Update bin information  #
         # ------------------------ #
-        old_weight, FLAT = alg.update_binned(step, binned_data, delta_local_energies[ACT],
-                            new_index, old_index, old_index_copy,
-                            old_mu, mu_bins,
-                            old_weight, get_weight, lendata, kTlogF, s)
-        
+        old_weight, FLAT = alg.update_func(
+                    step, binned_data, delta_local_energies[ACT],
+                    new_index, old_index, old_index_copy,
+                    old_mu, mu_bins,
+                    old_weight, get_weight, lendata, kTlogF, s)
+
+
+        # ------------------------------------ #
+        #  Update data on simulation dynamics  #
+        # ------------------------------------ #
+        if track_dynamics == True:
+            
+            # Update data on simulation dynamics / mobility
+            cuts['new_mu'] = cuts_new_mu
+            dyn.update_func(
+                    dyn_data, mu_bins, old_mu, old_index, s,
+                    cuts, rtrips,
+                    accepted, dmu, abs(delta_local_energies[ACT]))
+            
+            if TRAP == True:
+                dyn.update_minimat(dyn_data, mu_bins, old_mu, s,
+                        minimat, accepted, expnt)
 
         # ---------------- #
         #  Switch attempt  #
@@ -344,7 +431,6 @@ def run(atoms_alpha, atoms_beta, disp, binned_data, F, p, s):
     print "- Retakes: ", retakes
     print "- Switches: ", switches
 
-
     # --------------------------------------------- #
     #  Finalise things before returning to main.py  #
     # --------------------------------------------- #
@@ -352,19 +438,33 @@ def run(atoms_alpha, atoms_beta, disp, binned_data, F, p, s):
     if track_series == True:
         series.close()
 
+    if track_dynamics == True:
+        # Close the edge dmu files
+        l_edge_dmu.close()
+        r_edge_dmu.close()
+
+        # Round trip output file
+        dyn_data['rt'][0] += step
+        dyn_data['rt'][1] += switches
+        dyn_data['rt'][2] += rtrips['counts'] # half round trips
+        rt_rate = float(0.5 * dyn_data['rt'][2] * Natoms) / dyn_data['rt'][0] # rtrips per sweep
+        dyn_data['rt'][3] = 1.0 / rt_rate # sweeps per rtrip
+        dyn_data['rt'][4] = rtrips['flag'] # to be picked up by next iteration
+
     # Compute eigenvector and refresh weights
     alg.refresh_func(binned_data)
 
     # If interpolated weights used, remove those extrapolated bins / 'ghost points'
     if len(binned_data['w']) != len(binned_data['h']):
         binned_data['w'] = binned_data['w'][:-2]
+        if track_dynamics == True:
+            dyn_data['cu'] = dyn_data['cu'][:-2]
     
     # Only care about difference in weights, set minimum to zero
     binned_data['w'] -= np.min(binned_data['w'])
 
 
     return step
-
 
 
 
