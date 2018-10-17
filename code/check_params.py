@@ -345,7 +345,7 @@ if algorithm in ('multicanonical', 'transition'):
         print "Running for ", iterations, " iterations"
 if track_series == True:
     print ""
-    print "Tracking data series: saving every %d steps" %int(sweeps_series/Natoms)
+    print "Tracking data series: saving every %d steps" %int(sweeps_series*Natoms)
 print "Measuring simulation dynamics is set to: ", track_dynamics
 print ""
 print "Splitting into ", Np, "processes"

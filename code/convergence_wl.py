@@ -8,10 +8,13 @@ Can also be used to create plots for easy visualision of simulation efficiency.
 
 argv[1] is plot or report
 
+if argv[1] is report, argv[2] should be an array index corresponding to the F value you want to report on, e.g. 0 for the first, -1 for the last...
+
 File names are automatic (has to be so to allow calling from script)
 These are "sweeps_allF_sX.out"
 
 Run as e.g.      python convergence_wl.py plot
+                 python convergence_wl.py report -1
 
 """
 
@@ -87,7 +90,8 @@ cum_sweeps_stderr = cum_sweeps_stdev / np.sqrt(Ns_input)
 if argv[1] == 'report':
     
     # Print the total number of sweeps required to converge to the final F for each subdom
-    printlist = [simID, "%.10f"%F[-1], Ns] + list(cum_sweeps_all_s_T[-1,:])
+    X = int(argv[2])
+    printlist = [simID, "%.10f"%F[X], Ns] + list(cum_sweeps_all_s_T[X,:])
     for item in printlist:
         print item,
 

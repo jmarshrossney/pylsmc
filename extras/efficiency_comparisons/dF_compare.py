@@ -199,9 +199,8 @@ elif argv[1] in ('std', 'psi'):
             # Keep track of the number of sims we're averaging over
             N_repeats = len(index_list)
             N_repeats_list.append(N_repeats)
-            
             print "Averaging over %d simulations for simID: %d (%s)" \
-                    %(len(index_list), usid, sim_info.sim_labels[usid])
+                    %(N_repeats, usid, sim_info.sim_labels[usid])
 
             # Assume repeats have same Ns - pretty safe to assume
             unique_Ns.append(Ns[i0])

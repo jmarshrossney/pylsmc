@@ -10,10 +10,18 @@ sense rather than just comparing simulations labelled by integers.
 """
 
 # Label to go on categorical axis
-axis_label = "Number of subdomains"
+axis_label = "Number of bins"
 
-# List of strings describing type of simulations, indexed by simID
-sim_labels = ['1 subdomain',
-             '3 subdomains',
-             ]
+# dictionary of strings describing input files (plot legend)
+file_labels = {'rtd.txt': 'disc. weights',
+               'wld.txt': 'disc. weights',
+               'dFd.txt': 'disc. weights',
+               'stdevd.txt': 'disc. weights',
+               'rti.txt': 'interp. weights',
+               'wli.txt': 'interp. weights',
+               'dFi.txt': 'interp. weights',
+               'stdevi.txt': 'interp. weights'}
+
+# List of strings describing type of simulations, indexed by simID (categorical axis)
+sim_labels = ['301', '251', '201', '151', '101']
 

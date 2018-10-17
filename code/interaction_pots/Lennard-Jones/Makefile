@@ -33,6 +33,6 @@ pot: $(OBJECTS)
 	$(SWIG) -python $<
 
 clean : 
-	rm -f _pot.so *.o energy_wrap.* energy.py energy2.py _energy2.so _energy.so *.mod
+	rm -f _pot.so *.o energy_wrap.* energy.py energy2.py _energy2.so _energy.so *.mod *.pyc
 
 
