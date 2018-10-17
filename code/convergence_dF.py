@@ -215,7 +215,7 @@ if argv[1] in ('plot', 'report'):
 
         ax.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
 
-        ax.plot(sweeps_series,np.zeros(len(deltaF_series)),'r--',label=r"$\Delta F = 0$")
+        #ax.plot(sweeps_series,np.zeros(len(deltaF_series)),'r--',label=r"$\Delta F = 0$")
         #ax.set_xlim(0,np.max(sweeps_series)*1.4)
         #ax.set_ylim(np.min(deltaF_series)*1.2, np.max(deltaF_series)*3.2)
         ax.plot(sweeps_series[:-1:1],deltaF_series[:-1:1],'ko',markersize=4,label=r"raw $\Delta F$")

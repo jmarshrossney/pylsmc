@@ -1,6 +1,6 @@
 # py-lsmc
 
-*py-lsmc* stands for "Python - Lattice Switch Monte Carlo".
+*py-lsmc* stands for *"Python - Lattice Switch Monte Carlo"*.
 
 
 The purpose of the Lattice-switch algorithm<sup>1</sup> is to enable efficient computation of relative thermodynamic properties of different crystalline forms (often referred to as polymorphs) of a system.
@@ -63,7 +63,7 @@ Additional functionality includes:
 
 *py-lsmc* was created by myself (Joe Marsh Rossney) during my final-year undergraduate research project at Warwick University.
 It uses energy calculation routines written by Dr David Quigley.
-With massive thanks to Hayden Miller and David Quigley for many brilliant discussions which were instrumental in the construction of *py-lsmc*.
+With massive thanks to Hayden Miller and David Quigley for many brilliant discussions which were instrumental in the making of *py-lsmc*.
 
 
 ## References

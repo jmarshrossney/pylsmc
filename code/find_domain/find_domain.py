@@ -19,6 +19,7 @@ import numpy as np
 import sys
 from os.path import basename
 from ase.lattice.cubic import FaceCenteredCubic, BodyCenteredCubic
+from ase.lattice.hexagonal import HexagonalClosedPacked
 
 # Import params from parent directory
 # DO NOT import from this directory as the path to the interaction potential will be wrong
@@ -43,30 +44,33 @@ bin_width = 0.05*kT*Natoms
 #####################
 ## Local functions ##
 #####################
-def build_supercell(disp, vec, a, Ltype, shuffle=False):
+def build_supercell(disp, vec, Ltype, shuffle=False):
     """ Build a supercell using a given set of lattice vectors, lattice constant and type"""
 
     if Ltype == 'fcc':
         build = FaceCenteredCubic
+        Lconst = m.pow(4.0/density, 1.0/3.0)
+
     elif Ltype == 'bcc':
         build = BodyCenteredCubic
+        Lconst = m.pow(2.0/density, 1.0/3.0)
+
+    elif Ltype == 'hcp':
+        build = HexagonalClosedPacked
+        a = m.pow(m.sqrt(2.0)/density, 1.0/3.0)
+        Lconst = (a, m.sqrt(8.0/3.0)*a)
+
     else:
-        error(this_file, "Only fcc and bcc supported right now. Please set alpha_type and beta_type to 'fcc' or 'bcc' in params.py")
+        error(this_file, "Only fcc, bcc and hcp supported right now. Please set alpha_type and beta_type to 'fcc', 'bcc' or 'hcp' in params.py")
 
     atoms = build(size=tuple(vec),
                     symbol='Ar', # inconsequential
                     pbc=(1,1,1),
-                    latticeconstant=a)
+                    latticeconstant=Lconst)
     
     # Translate so that center of mass is at (0,0,0)
     com = atoms.get_center_of_mass()
     atoms.translate(-com)
-
-    # Haven't yet worked out how to translate the cell..
-    cell = np.array([[vec[0]*a,0.0,0.0],
-                     [0.0,vec[1]*a,0.0],
-                     [0.0,0.0,vec[2]*a]])
-    atoms.set_cell(cell)
 
     # Shuffle atomic indices of one lattice if both lattices are same type
     if shuffle != False:
@@ -124,8 +128,8 @@ else: shuffle = False
 
 # Supercells - these are ASE Atoms objects
 disp = np.zeros((Natoms,3))
-atoms_alpha = build_supercell(disp, alpha_vec, alpha_a, alpha_type)
-atoms_beta  = build_supercell(disp, beta_vec, beta_a, beta_type, shuffle)
+atoms_alpha = build_supercell(disp, alpha_vec, alpha_type)
+atoms_beta  = build_supercell(disp, beta_vec, beta_type, shuffle)
 
 
 # ------------------- #

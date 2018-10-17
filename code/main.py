@@ -56,8 +56,8 @@ if alpha_type == beta_type: shuffle = True
 else: shuffle = False
 
 # Supercells - these are ASE Atoms objects
-atoms_alpha = ini.build_supercell(disp, alpha_vec, alpha_a, alpha_type)
-atoms_beta  = ini.build_supercell(disp, beta_vec, beta_a, beta_type, shuffle)
+atoms_alpha = ini.build_supercell(disp, alpha_vec, alpha_type)
+atoms_beta  = ini.build_supercell(disp, beta_vec, beta_type, shuffle)
 
 
 # ------------------------ #

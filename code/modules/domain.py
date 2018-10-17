@@ -66,6 +66,10 @@ for s in range(Ns):
             sd_info['h_bin_olap'] = bin_olap
             sd_info['bins'] += bin_olap
 
+    else: 
+        sd_info['l_bin_olap'] = 0
+        sd_info['h_bin_olap'] = 0
+
     subdom.append(sd_info)
 
 

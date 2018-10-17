@@ -140,10 +140,9 @@ def save_func(binned_data, mu_bins, step, s, p):
 #################################
 ## Save after each F iteration ##
 #################################
-def save_F(F, counters, binned_data, s):
+def save_F(F, steps, binned_data, s):
 
     # Save to F, sweeps file
-    steps = counters[0]
     Nsweeps = sweeps_relax + steps / Natoms
     with open("sweeps_allF_s"+str(s)+".out", 'a+') as f_handle:
         f_handle.write("%.10f %d\n" %(F, Nsweeps))

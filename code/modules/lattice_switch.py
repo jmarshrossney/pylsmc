@@ -315,7 +315,7 @@ def run(atoms_alpha, atoms_beta, disp, binned_data, dyn_data, F, p, s):
                         False, dmu, abs(delta_local_energies[ACT]))
               
                 if TRAP == True:
-                    dyn.update_minimat(dyn_data, mu_bins, old_mu, s,
+                    dyn.update_minimat(dyn_data, mu_bins, old_mu, old_index, s,
                             minimat, True, 0)
 
             # Undo lattice positions update
@@ -399,7 +399,7 @@ def run(atoms_alpha, atoms_beta, disp, binned_data, dyn_data, F, p, s):
                     accepted, dmu, abs(delta_local_energies[ACT]))
             
             if TRAP == True:
-                dyn.update_minimat(dyn_data, mu_bins, old_mu, s,
+                dyn.update_minimat(dyn_data, mu_bins, old_mu, old_index, s,
                         minimat, accepted, expnt)
 
         # ---------------- #

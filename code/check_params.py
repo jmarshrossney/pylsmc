@@ -245,15 +245,16 @@ def check_shuffle_file():
 #################################################################
 
 if len(argv) > 1:
-    if argv[1] == 'lattice':
+    if argv[1] in ('lattice', 'calibrate'):
         # Create temporary supercells to perform checks
-        atoms_alpha = ini.build_supercell(np.zeros((Natoms,3)), alpha_vec, alpha_a, alpha_type)
-        atoms_beta = ini.build_supercell(np.zeros((Natoms,3)), beta_vec, beta_a, beta_type)
+        atoms_alpha = ini.build_supercell(np.zeros((Natoms,3)), alpha_vec, alpha_type)
+        atoms_beta = ini.build_supercell(np.zeros((Natoms,3)), beta_vec, beta_type)
         # Check that the supercells are compatible
         check_compatible(atoms_alpha, atoms_beta)
         
-        # Compare measured ideal lattice energies with those in params.py
-        calibrate(atoms_alpha, atoms_beta)
+        if argv[1] == 'calibrate':
+            # Compare measured ideal lattice energies with those in params.py
+            calibrate(atoms_alpha, atoms_beta)
 
     elif argv[1] == 'domain':
         # Check that there is a bin boundary at mu = 0
@@ -271,8 +272,8 @@ if len(argv) > 1:
 
 
 # Create temporary supercells to perform checks
-atoms_alpha = ini.build_supercell(np.zeros((Natoms,3)), alpha_vec, alpha_a, alpha_type)
-atoms_beta = ini.build_supercell(np.zeros((Natoms,3)), beta_vec, beta_a, beta_type)
+atoms_alpha = ini.build_supercell(np.zeros((Natoms,3)), alpha_vec, alpha_type)
+atoms_beta = ini.build_supercell(np.zeros((Natoms,3)), beta_vec, beta_type)
 
 # Check that the supercells are compatible
 check_compatible(atoms_alpha, atoms_beta)
