@@ -58,17 +58,41 @@ if Nfiles == 0:
 # Iterate over input files
 for ifile in range(Nfiles):
 
+    # Initialise lists
+    simID = []
+    Ns_list = []
+    rt_sweeps_allr_alls = []
+    rt_err_allr_alls = []
+
     print "Reading data from file: ", input_files[ifile]
     
-    # Read data from file
-    input_data = np.loadtxt(input_files[ifile])
-    simID = input_data[:,0]
-    rt_rate = input_data[:,1]
+    # Open file and read data
+    # (Not using np.loadtxt since number of subdoms/cols can vary)
+    with open(input_files[ifile]) as f:
+        for line in f:
+        
+            # Convert line from string to list of floats
+            line_float = map(float, line.split())
 
+            # Append single numbers to lists
+            simID.append(int(line_float[0]))
+            Ns = int(line_float[1])
+            Ns_list.append(this_Ns)
+
+            # Round trip time and error
+            rt_sweeps_thisr_alls = np.array(line_float[2:2+Ns])
+            rt_err_thisr_alls = np.array(line_float[2+Ns:])
+            rt_sweeps_allr_alls.append(rt_sweeps)
+            rt_err_allr_alls.append(rt_err)
+
+    
     unique_simID = np.sort(np.array(list(set(simID)), dtype=int))
     simID = np.array(simID, dtype=int) # convert to int to enable 'usid == sid' expression
-    rt_rate_mean = []
-    rt_rate_stderr = []
+    
+    sweeps_rmean_alls = []
+    err_sweeps_rmean_alls = []
+    sweeps_rmean_smean = []
+    err_sweeps_rmean_smean = []
 
     # ------------------------------------- #
     #  Iterate over unique values of simID  #
@@ -81,14 +105,30 @@ for ifile in range(Nfiles):
         print "Averaging over %d simulations from simID: %d (%s)" \
                 %(len(index_list), usid, sim_info.sim_labels[usid])
         
-        # Pull out round trip rates for these rows
-        data_to_average = rt_rate[index_list]
-        Nrep = len(data_to_average)
+        # Pull out round trip rates for these rows (all subdoms)
+        data_to_average = []
+        err_to_propagate = []
+        for i in index_list:
+            data_to_average.append(rt_sweeps_allr_alls[index_list])
+            err_to_propagate.append(rt_err_allr_alls[index_list])
+        
+        # Data in form (rows, cols) = (repeats, subdoms)
+        data_to_average = np.array(data_to_average)
+        err_to_propagate = np.array(err_to_propagate)
+        Nrep = len(data_to_average[:,0])
+        Ns = len(data_to_average[0,:])
 
-        # Append mean, standard error to list corresponding to unique_simID
-        rt_rate_mean.append( np.mean(data_to_average) )
-        rt_rate_stderr.append( np.std(data_to_average) / np.sqrt(Nrep) )
-   
+        # Average over repeats; subdoms still separate
+        # !todo: propagate error properly - this error will be an overestimate
+        # unless there was only one p per s for all simulations
+        sweeps_rmean_alls.append( np.mean(data_to_average, axis=0) )
+        err_sweeps_rmean_alls.append( np.std(data_to_average, axis=0) / np.sqrt(Nrep) )
+        
+        # Average over repeats AND subdoms
+        data_to_average = data_to_average.flatten()
+        sweeps_rmean_smean.append( np.mean(data_to_average) )
+        err_sweeps_rmean_smean.append( np.std(data_to_average) / np.sqrt(Nrep*Ns) )
+
 
     # End loop over unique values of simID
 
@@ -98,9 +138,24 @@ for ifile in range(Nfiles):
     # ------------- #
     # input file is a key to access dictionary, value describes the simulations
     label = sim_info.file_labels[input_files[ifile]]
+    
+    # X axis for bar plot, with offsets when multiple input files
+    if Nfiles > 1:
+        fake_xticks = np.arange(Nsid) + np.linspace(-0.2, 0.2, Nfiles)[ifile]
+        width = 0.8/Nfiles
+    else:
+        fake_xticks = np.arange(Nsid)
+        width = 0.8
 
-    # Plot mean round trip time and error
-    ax.errorbar(fake_xticks[unique_simID], rt_rate_mean, yerr=rt_rate_stderr, fmt=colors[ifile]+'o', label=label)
+    # Plot round trip time and error, averaged over repeats AND subdomains
+    ax.bar(fake_xticks[unique_simID], sweeps_rmean_smean, width=width, color=colors[ifile], label=label)
+    ax.errorbar(fake_xticks[unique_simID], sweeps_rmean_smean, yerr=err_sweeps_rmean_smean, \
+            fmt='ko')
+
+    # Plot a little line to show any trends in subdomain round trip time
+    for i in range(len(unique_simID)):
+        x = np.linspace(-width, width, Ns_list[i]) + fake_xticks[i]
+        ax.plot(x, sweeps_rmean_alls[i], 'r-')
 
 
 # End loop over input files

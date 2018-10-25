@@ -23,6 +23,8 @@ import initialise as ini
 # Name of this file
 this_file = basename(__file__)
 
+# Number of steps to run for before returning to main.py and recording dF
+Nsteps = Natoms * sweeps_dF
 
 def extrapolate(array):
     """ Adds linearly extrapolated end bins to a numpy array, assuming the
@@ -58,7 +60,7 @@ def file_names(stage, s=0, p=0):
         eigvec_out = "eigvec_TM" + pname[0] + sname[0] + ".out"
         series_out = "series_TM" + pname[0] + sname[0] + ".out"
         return {'d': disp_out, 'w': weights_out, 'h': hist_out, \
-                'c': Cmat_out, 'e': eigvec_out, 's': series_out}
+                'c': Cmat_out, 's': series_out}
 
     elif stage == 'pcomb':
         # After combined over processors
@@ -68,7 +70,7 @@ def file_names(stage, s=0, p=0):
         eigvec_pcomb = "eigvec_TM" + pname[1] + sname[0] + ".out"
         series_pcomb = "series_TM" + pname[1] + sname[0] + ".out"
         return {'w': weights_pcomb, 'h': hist_pcomb, \
-                'c': Cmat_pcomb, 'e': eigvec_pcomb, 's': series_pcomb}
+                'c': Cmat_pcomb, 's': series_pcomb}
 
     elif stage == 'scomb':
         # After subdomain join
@@ -76,8 +78,13 @@ def file_names(stage, s=0, p=0):
         hist_scomb = "hist_TM" + pname[1] + sname[1] + ".out"
         Cmat_scomb = "Cmat_TM" + pname[1] + sname[1] + ".out"
         eigvec_scomb = "eigvec_TM" + pname[1] + sname[1] + ".out"
-        return {'w': weights_scomb, 'h': hist_scomb, 'c': Cmat_scomb, 'e': eigvec_scomb}
+        return {'w': weights_scomb, 'h': hist_scomb, 'c': Cmat_scomb}
 
+    elif stage == 'dF':
+        # dF estimate
+        dF_file = "deltaF_TM.out"
+        return dF_file
+    
     else:
         error(this_file, "Invalid argument: "+stage)
 
@@ -94,10 +101,7 @@ def load_inputs(s, p):
     hist = ini.file_input(input_files['h'], size)
     Cmat = ini.file_input(input_files['c'], (size,size) )
 
-    # Initialise eigvec as a random vector
-    eigvec = np.random.random(size)
-
-    return disp, {'w': weights, 'h': hist, 'c': Cmat, 'e': eigvec}
+    return disp, {'w': weights, 'h': hist, 'c': Cmat}
 
 
 ############################################################
@@ -106,7 +110,7 @@ def load_inputs(s, p):
 def refresh_func(binned_data):
 
     # Find eigenvector and associated weights from transition matrix
-    binned_data['e'], TMweights, v = get_Pmat_eigenvector(binned_data['c'], binned_data['e'])
+    TMweights = get_Pmat_eigenvector(binned_data['c'])
     
     if use_interpolated_weights == True:
         # Need to add bins to the edges of mu and weights for extrapolation
@@ -153,25 +157,39 @@ def save_func(binned_data, mu_bins, step, s, p):
     np.savetxt("weights"+savename+".out", binned_data['w'])
     np.savetxt("hist"+savename+".out", binned_data['h'])
     np.savetxt("Cmat"+savename+".out", binned_data['c'])
-    np.savetxt("eigvec"+savename+".out", binned_data['e'])
 
 
 ################################
 ### Matrix-related functions ###
 ################################
-def sequential(Pmat, eigvec_init):
-    """ Uses sequential evaluation (first off-diagonals only) to compute eigenvector
-        of P matrix """
-    eigvec = np.zeros(len(eigvec_init))
-    eigvec[0] = 1.0
+def seq_undersampled(Pmat):
+    """ Uses sequential evalutaion (first off-diagonals only) and some other weird stuff
+        to estimate the eigenvector for an undersampled P matrix """
+    eigvec = np.zeros(len(Pmat))
+    eigvec[0] = 1
     for i in range(len(eigvec)-1):
-        eigvec[i+1] = np.exp( np.log(eigvec[i]) + np.log(Pmat[i+1,i] / Pmat[i,i+1]) )
-    eigvec = eigvec - np.min(eigvec) + 0.000001 # assume pdf goes to ~0 at edges
+        Pto = Pmat[i+1,i]
+        Pfrom = Pmat[i,i+1]
+        if Pto == 0 or Pfrom == 0:
+            Pto = 1
+            Pfrom = 1
+        eigvec[i+1] = np.exp( np.log(eigvec[i]) + np.log(Pto) - np.log(Pfrom) )
     eigvec = eigvec / np.sum(eigvec) # normalise
     return eigvec
 
-def arpack(Pmat, eigvec_init):
+def sequential(Pmat):
+    """ Uses sequential evaluation (first off-diagonals only) to compute eigenvector
+        of P matrix """
+    eigvec = np.zeros(len(Pmat))
+    eigvec[0] = 1
+    for i in range(len(eigvec)-1):
+        eigvec[i+1] = np.exp( np.log(eigvec[i]) + np.log(Pmat[i+1,i]) - np.log(Pmat[i,i+1]) )
+    eigvec = eigvec / np.sum(eigvec) # normalise
+    return eigvec
+
+def arpack(Pmat):
     """ Uses python wrapper to Arpack to compute eigenvector of P matrix """
+    eigvec_init = np.random.random(len(Pmat))
     eigval, eigvec = eigs(Pmat, k=1, which='LM', v0 = eigvec_init, tol=eigs_tol)
     eigvec_abs = np.abs(eigvec)
     return eigvec_abs / np.sum(eigvec_abs)
@@ -184,11 +202,11 @@ def Cmat_to_Pmat(Cmat):
 
     return Pmat
 
-def get_Pmat_eigenvector(Cmat, eigvec):
+def get_Pmat_eigenvector(Cmat):
     """ Returns the transition matrix eigenvector and associated
         multicanonical weights estimate """
 
-    lendata = len(eigvec)
+    lendata = len(Cmat)
     undersampled = np.where(Cmat.diagonal()<1000)[0]
         
     # Make a fresh copy - Cmat shouldn't be changed here
@@ -197,11 +215,11 @@ def get_Pmat_eigenvector(Cmat, eigvec):
     # Pretend there aren't zeros on diagonal if there are
     if len(undersampled) != 0:
         Cmat_copy += np.diag(np.ones(lendata))
-        
+
     # Symmetrise zeros in second off-diagonal
-    for j in range(lendata-3):
-        if Cmat_copy[j,j+2] == 0: Cmat_copy[j+2,j] = 0
-        if Cmat_copy[j+2,j] == 0: Cmat_copy[j,j+2] = 0
+    #for j in range(lendata-3):
+    #    if Cmat_copy[j,j+2] == 0: Cmat_copy[j+2,j] = 0
+    #    if Cmat_copy[j+2,j] == 0: Cmat_copy[j,j+2] = 0
              
     # Separately normalise transitions from each bin
     Pmat = Cmat_to_Pmat(Cmat_copy)
@@ -220,11 +238,15 @@ def get_Pmat_eigenvector(Cmat, eigvec):
     print "TTT identity: detailed balance violation: max is %f in col %d" %(v_abs[j],j)
         
     # Pull out an estimate for the probability
-    print "Attempting to compute eigenvector using ", eigvec_method
-    if eigvec_method == 'arpack':
-        eigvec = arpack(Pmat, eigvec)
-    elif eigvec_method == 'sequential':
-        eigvec = sequential(Pmat, eigvec)
+    if len(undersampled) != 0:
+        print "Attempting to compute eigenvector of undersampled transition matrix"
+        eigvec = seq_undersampled(Pmat)
+    else:
+        print "Attempting to compute eigenvector using ", eigvec_method
+        if eigvec_method == 'arpack':
+            eigvec = arpack(Pmat)
+        elif eigvec_method == 'sequential':
+            eigvec = sequential(Pmat)
         
     # Scale by bin width and renormalise
     if TRAP == False:
@@ -243,7 +265,7 @@ def get_Pmat_eigenvector(Cmat, eigvec):
     # Smooth out undersampled bits
     # I don't know what to put here right now
 
-    return eigvec, TMweights, v
+    return TMweights
 
 
 

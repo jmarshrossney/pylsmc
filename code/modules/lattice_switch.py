@@ -14,7 +14,7 @@ from os.path import basename
 from params import *
 import energy
 import domain as dom
-import lsmc_dynamics as dyn
+import dynamics as dyn
 
 # Import module corresponding to the type of algorithm being used
 if algorithm == 'wang_landau': import wang_landau as alg
@@ -103,7 +103,7 @@ def extrapolate(array):
 ########################################################################################
 
 
-def run(atoms_alpha, atoms_beta, disp, binned_data, dyn_data, F, p, s):
+def run(atoms_alpha, atoms_beta, disp, binned_data, dyn_data, p, s, F=1, relax=False):
     
     # ------------------------------------------------- #
     #  Set simulation parameters and useful quantities  #
@@ -112,7 +112,10 @@ def run(atoms_alpha, atoms_beta, disp, binned_data, dyn_data, F, p, s):
     kTlogF = kT*np.log(F)
 
     # Convert frequency parameters from sweeps to steps
-    Nsteps = alg.Nsteps
+    if relax == True:
+        Nsteps = sweeps_relax * Natoms
+    else:
+        Nsteps = alg.Nsteps
     save_step = sweeps_save * Natoms
     series_step = int(sweeps_series * Natoms)
     recalc_step = sweeps_recalc * Natoms
@@ -210,11 +213,6 @@ def run(atoms_alpha, atoms_beta, disp, binned_data, dyn_data, F, p, s):
                        'old_index': dyn.get_minibin_index(old_mu, s, old_index),
                        'Pprod': 1}
 
-        # Open files for edge dmu's
-        dyn_output_files = dyn.file_names('output', s, p)
-        l_edge_dmu = open(dyn_output_files['led'], 'a')
-        r_edge_dmu = open(dyn_output_files['red'], 'a')
-
 
     # --------------------------- #
     #  Open file for data series  #
@@ -301,18 +299,11 @@ def run(atoms_alpha, atoms_beta, disp, binned_data, dyn_data, F, p, s):
                         old_weight, get_weight, lendata, kTlogF, s)
             
             if track_dynamics == True:
-                # Record size of attempted move out of (sub)domain
-                dmu = abs(new_mu - old_mu)
-                if new_mu < global_mu_min:
-                    l_edge_dmu.write("%f\n" %dmu)
-                elif new_mu > global_mu_max:
-                    r_edge_dmu.write("%f\n" %dmu)
-                
                 # Update data on simulation dynamics / mobility
                 dyn.update_func(
                         dyn_data, mu_bins, old_mu, old_index, s,
                         cuts, rtrips,
-                        False, dmu, abs(delta_local_energies[ACT]))
+                        False, abs(new_mu - old_mu), abs(delta_local_energies[ACT]))
               
                 if TRAP == True:
                     dyn.update_minimat(dyn_data, mu_bins, old_mu, old_index, s,
@@ -354,7 +345,6 @@ def run(atoms_alpha, atoms_beta, disp, binned_data, dyn_data, F, p, s):
         #sampling_adjust = np.exp( B*intra_bin_weight ) # doesn't work: centre of bins?"""
         
         old_index_copy = old_index # to update Cmat and extra info after move evaluation
-        dmu = abs(new_mu-old_mu) # to update extra info
 
         # Update things according to whether move accepted
         if accepted == True:
@@ -396,7 +386,7 @@ def run(atoms_alpha, atoms_beta, disp, binned_data, dyn_data, F, p, s):
             dyn.update_func(
                     dyn_data, mu_bins, old_mu, old_index, s,
                     cuts, rtrips,
-                    accepted, dmu, abs(delta_local_energies[ACT]))
+                    accepted, abs(new_mu-old_mu), abs(delta_local_energies[ACT]))
             
             if TRAP == True:
                 dyn.update_minimat(dyn_data, mu_bins, old_mu, old_index, s,
@@ -439,10 +429,6 @@ def run(atoms_alpha, atoms_beta, disp, binned_data, dyn_data, F, p, s):
         series.close()
 
     if track_dynamics == True:
-        # Close the edge dmu files
-        l_edge_dmu.close()
-        r_edge_dmu.close()
-
         # Round trip output file
         dyn_data['rt'][0] += step
         dyn_data['rt'][1] += switches
@@ -543,6 +529,6 @@ def drift(atoms_alpha, atoms_beta, disp, target_s):
 
     # Once in the right subdomain
 
-    return mu
+    return 
 
 

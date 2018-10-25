@@ -94,17 +94,8 @@ for s in range(Ns_eff):
     #  Additional steps if Transition Matrix  #
     # --------------------------------------- #
     if argv[1] == 'c':
-        # Initialise eigvec computation with one of the other individual eigenvectors (just slightly faster than starting from random)
-        eigvec_file = alg.file_names('output')['e']
-        eigvec_init = np.loadtxt(eigvec_file)
-
         # Pull out a new eigenvector from the combined Pmat
-        eigvec, TMweights, v = alg.get_Pmat_eigenvector(data_comb, eigvec_init)
-
-        # Save eigvec
-        savename = alg.file_names('pcomb')['e']
-        print "Saving combined eigenvector to ", savename
-        np.savetxt(savename, eigvec)
+        TMweights = alg.get_Pmat_eigenvector(data_comb)
 
         # Save weights
         savename = alg.file_names('pcomb')['w']

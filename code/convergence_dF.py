@@ -28,8 +28,14 @@ from os.path import basename
 
 from params import *
 
+if algorithm == 'wang_landau': import wang_landau as alg
+elif algorithm == 'multicanonical': import multicanonical as alg
+elif algorithm == 'transition': import transition_matrix as alg
+
 # Name of this file
 this_file = basename(__file__)
+
+deltaF_file = alg.file_names('dF')
 
 # Can specify a non-default window size via argument variable
 if len(argv) > 2:
@@ -76,7 +82,7 @@ def unweighted_estimators(deltaF_series):
     unweighted_stdev = np.std(deltaF_series)
     err_unweighted_mean = unweighted_stdev / np.sqrt(N)
     
-    return unweighted_mean,  unweighted_stdev, err_unweighted_mean
+    return unweighted_mean, unweighted_stdev, err_unweighted_mean
 
 
 ###################################################
@@ -144,11 +150,12 @@ if argv[1] in ('plot', 'report'):
     input_data = np.loadtxt(deltaF_file)
     
     # Unpack
-    deltaF_series = input_data[:,0]
-    error_series = input_data[:,1]
+    sweeps_series = input_data[:,0]
+    deltaF_series = input_data[:,1]
+    error_series = input_data[:,2]
     
     # Cumulative sweeps corresponding to each dF value
-    sweeps_series = np.arange(1,len(deltaF_series)+1)*sweeps_dF
+    sweeps_series = np.cumsum(sweeps_series)
 
     # Size of arrays to take computed values of estimators
     N_computed = len(deltaF_series) - window
@@ -196,6 +203,12 @@ if argv[1] in ('plot', 'report'):
         plt.rc('font', **font)
         plt.rcParams['axes.linewidth'] = 2
 
+        # Use dots or dashed lines depending on how many points there are
+        if len(deltaF_series) < 50:
+            mkr = 'ko'
+        else:
+            mkr = 'k--'
+
         # Print final values
         print "Mean: %1.2e" %mean
         print "Error on the mean: %1.2e" %stderr
@@ -210,20 +223,11 @@ if argv[1] in ('plot', 'report'):
         ax.set_xlabel("Sweeps")
         ax.set_ylabel("Free energy difference (kT/atom)")
         ax.tick_params(direction='in',top=True,right=True)
-        #ax.set_yticklabels([])
-        #ax.set_xticklabels([])
 
         ax.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
+        ax.plot(sweeps_series[:-1], deltaF_series[:-1:1], mkr, markersize=4, label=r"raw $\Delta F$")
+        ax.plot(sweeps_series[-1], deltaF_series[-1], 'ro', markersize=4)
 
-        #ax.plot(sweeps_series,np.zeros(len(deltaF_series)),'r--',label=r"$\Delta F = 0$")
-        #ax.set_xlim(0,np.max(sweeps_series)*1.4)
-        #ax.set_ylim(np.min(deltaF_series)*1.2, np.max(deltaF_series)*3.2)
-        ax.plot(sweeps_series[:-1:1],deltaF_series[:-1:1],'ko',markersize=4,label=r"raw $\Delta F$")
-        ax.plot(sweeps_series[-1],deltaF_series[-1],'ro',markersize=4)
-
-        #ax.plot(sweeps_series[window:],mean_series,'g',label=r"$\bar{\Delta F}$")
-        #ax.plot(sweeps_series[window:],dF_up,'m',label=r"$\Delta F \pm 1\sigma$")
-        #ax.plot(sweeps_series[window:],dF_down,'m')
 
         ax.legend()
         plt.tight_layout()

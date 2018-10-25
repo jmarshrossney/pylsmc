@@ -5,10 +5,10 @@
 #SBATCH --time=10:00:00
 
 # Load relevant modules
-module load intel parallel
+source ~/.bashrc
 
 # Run the executable
-./run_parallel.sh
+./run.sh
 
 # Indicate normal completion
 exit 0

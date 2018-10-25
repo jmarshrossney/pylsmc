@@ -72,12 +72,6 @@ def file_names(stage, s=0, p=0):
     if TRAP == True:
         return_dict['mm'] = minimat
 
-    if stage == 'output':
-        l_edge_dmu = "l_edge_dmu" + leaf
-        r_edge_dmu = "r_edge_dmu" + leaf
-        return_dict['led'] = l_edge_dmu
-        return_dict['red'] = r_edge_dmu
-
     return return_dict
 
 

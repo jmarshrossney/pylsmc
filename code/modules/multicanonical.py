@@ -65,6 +65,11 @@ def file_names(stage, s=0, p=0):
         hist_scomb = "hist_MC" + "_unfld" + sname[1] + ".out"
         return {'h': hist_scomb}
 
+    elif stage == 'dF':
+        # dF estimate
+        dF_file = "deltaF_MC.out"
+        return dF_file
+    
     else:
         error(this_file, "Invalid argument: "+stage)
 

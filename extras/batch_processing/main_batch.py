@@ -16,7 +16,7 @@ import initialise as ini
 import lattice_switch as ls
 
 if track_dynamics == True:
-    import lsmc_dynamics as dyn
+    import dynamics as dyn
 
 if algorithm == 'wang_landau':
     import wang_landau as alg

@@ -16,7 +16,7 @@ import initialise as ini
 import lattice_switch as ls
 
 if track_dynamics == True:
-    import lsmc_dynamics as dyn
+    import dynamics as dyn
 
 if algorithm == 'wang_landau':
     import wang_landau as alg
@@ -66,8 +66,21 @@ atoms_beta  = ini.build_supercell(disp, beta_vec, beta_type, shuffle)
 if disp.any() == False: # if starting from ideal lattice positions
     # Drift to correct subdomain and save configuration
     print "Drifting to subdomain ", s
-    mu = ls.drift(atoms_alpha, atoms_beta, disp, s)
-    print "Final lattice configurations give mu = ", mu
+    ls.drift(atoms_alpha, atoms_beta, disp, s)
+
+    # Run for 'sweeps_relax' sweeps to find a more typical starting configuration
+    print ""
+    print "Running with Boltzmann weights for %d sweeps..." %sweeps_relax
+    size = ini.get_size(s)
+    steps = ls.run(
+                atoms_alpha, atoms_beta,
+                disp, 
+                {'w': np.zeros(size),
+                'h': np.zeros(size),
+                'c': np.zeros((size,size))},
+                dyn_data,
+                p, s,
+                relax=True)
 
     # Separate independent runs by saving this line to the series output file
     if track_series == True:
@@ -91,22 +104,6 @@ if disp.any() == False: # if starting from ideal lattice positions
 ###################
 if algorithm == 'wang_landau':
 
-    # Size of binned data for this subdomain
-    size = ini.get_size(s)
-    
-    print ""
-    print "Running with Boltzmann weights for %d sweeps..." %sweeps_relax
-        
-    # Allow the model to 'relax' away from its initial configuration
-    # Note that disp vector needs to be passed onto the next stage
-    steps = ls.run(
-                atoms_alpha, atoms_beta,
-                disp, 
-                {'w': np.zeros(size), # weights
-                'h': np.zeros(size) }, # hist
-                dyn_data,
-                F=1, p=p, s=s)
-
     # ----------------------------------------------------- #
     #  Iterate over incremental factors of decreasing size  #
     # ----------------------------------------------------- #
@@ -124,7 +121,8 @@ if algorithm == 'wang_landau':
                     disp,
                     binned_data,
                     dyn_data,
-                    F=F, p=p, s=s)
+                    p, s,
+                    F=F)
 
         # Save for this F
         alg.save_F(F, steps, binned_data, s)
@@ -148,7 +146,7 @@ if algorithm in ('multicanonical', 'transition'):
                 disp, 
                 binned_data,
                 dyn_data,
-                F=1, p=p, s=s)
+                p=p, s=s)
 
 
 # ------------------------------------------------------ #

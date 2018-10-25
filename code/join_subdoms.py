@@ -8,7 +8,7 @@ Also creates a number of additional datasets which can be used by calc_dF.py to 
 Run automatically by run_parallel.sh,
 but can also be run manually using the following arguments:
     
-    argv[1] - 'w', 'c', 'h', 'e' for weights, Cmat, histogram, eigvec data
+    argv[1] - 'w', 'c', 'h' for weights, Cmat, histogram
 
     argv[2] - Optional. Filename STEM (in this case, everything before _sX.out). If none given uses automatic filenames based on params.py
 
@@ -64,8 +64,8 @@ if Ns == 1 or TRAP == False:
 #  Compile a list of input/output file names  #
 # ------------------------------------------- #
 # Check for sensible argv[1]
-if argv[1] not in ('w','c','h','e'):
-    error(this_file, "argv[1] should be 'w', 'c', 'h' or 'e'")
+if argv[1] not in ('w','c','h'):
+    error(this_file, "argv[1] should be 'w', 'c', or 'h'")
 
 # Input file names for each subdomain
 input_file_list = []
@@ -107,14 +107,14 @@ def plot_combined(data_list, mu_list):
     #if argv[1] == 'w':
         #ax1.set_ylabel(r'$\eta$')
         #ax2.set_ylabel(r'$\eta$')
-    #elif argv[1] in ('h','e'):
+    #elif argv[1] in ('h'):
         #ax1.set_ylabel(r"$P(\mu)$")
         #ax2.set_ylabel("P")
 
     for s in range(len(data_list)):
         ax1.plot(mu_list[s]*float(B)/Natoms,data_list[s],mkrs[s%2],linewidth=6,markersize=10)
         
-        #if argv[1] in ('h','e'):
+        #if argv[1] in ('h'):
         #    ax2.semilogy(mu_list[s]*float(B)/Natoms,data_list[s],mkrs2[s%2])
 
     plt.tight_layout()
@@ -157,16 +157,10 @@ if argv[1] == 'c':
     print "Saving combined Cmat to file: ", output_file
     np.savetxt(output_file,Cmat_comb)
     
-    # If combined eigvec already exists, initialise with that
-    output_files = alg.file_names('scomb')
-    eigvec_file = output_files['e']
-    if exists(eigvec_file):
-        eigvec_init = np.loadtxt(eigvec_file)
-    else:
-        eigvec_init = np.random.random(len(Cmat_comb))
+    eigvec_init = np.random.random(len(Cmat_comb))
 
     # Pull out eigenvector from the combined matrix
-    eigvec, TMweights, v = alg.get_Pmat_eigenvector(Cmat_comb, eigvec_init)
+    TMweights = alg.get_Pmat_eigenvector(Cmat_comb, eigvec_init)
 
     # Possibly need to scale by bin width here, as in calc_dF.py
 
@@ -199,8 +193,8 @@ for s in range(Ns):
     
     input_data = np.loadtxt(input_file_list[s])
 
-    # Take log if histogram/probability data
-    if argv[1] in ('h','e'):
+    # Take log if histogram data
+    if argv[1] in ('h'):
         input_data = -np.log(input_data)
 
     data_list.append(input_data)
@@ -303,8 +297,8 @@ if argv[1] == 'w':
         for j in range(Nsamples_join):
             data_list_err[j][s][:] -= data_min_err[j]
 
-# Histogram or eigvec
-if argv[1] in ('h','e'):
+# Histogram
+if argv[1] in ('h'):
     # Sum data over all subdomains for later normalisation
     Psum = 0
     Psum_err = [0,]*Nsamples_join
@@ -381,17 +375,6 @@ if argv[1] == 'h':
         data_combined_err[j,:] = data_combined_err[j,:] / np.sum(data_combined_err[j,:])
     
     print "Saving combined histogram to file: ",output_file
-    np.savetxt(output_file,data_combined)
-
-# Eigvec
-if argv[1] == 'e':
-
-    # Normalise once again
-    data_combined = data_combined / np.sum(data_combined)
-    for j in range(Nsamples_join):
-        data_combined_err[j,:] = data_combined_err[j,:] / np.sum(data_combined_err[j,:])
-    
-    print "Saving combined Probability estimate to file: ",output_file
     np.savetxt(output_file,data_combined)
 
 

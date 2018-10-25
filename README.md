@@ -5,7 +5,7 @@
 
 The purpose of the Lattice-switch algorithm<sup>1</sup> is to enable efficient computation of relative thermodynamic properties of different crystalline forms (often referred to as polymorphs) of a system.
 
-*py-lsmc* combines highly optimised low-level FORTRAN routines with a convenient Python front-end to arrive at accurate Free energy differences between polymorphs of model systems.
+*py-lsmc* combines highly optimised low-level Fortran routines with a convenient Python front-end to arrive at accurate Free energy differences between polymorphs of model systems.
 Parallelisation via domain decomposition allows systems containing thousands of atoms to be tackled using additional CPUs.
 
 ## Getting started

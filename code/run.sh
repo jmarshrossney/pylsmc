@@ -26,6 +26,8 @@ then
 
     echo "-----> join_subdoms.py w"; python join_subdoms.py w
 
+    echo "-----> calc_dF.py"; python calc_dF.py
+
     echo "Finished."
 fi
 
@@ -74,7 +76,6 @@ then
         echo "-----> join_procs.py h"; python join_procs.py h
         echo "-----> join_procs.py c"; python join_procs.py c
         
-        echo "-----> join_subdoms.py e"; python join_subdoms.py e
         echo "-----> join_subdoms.py w"; python join_subdoms.py w
 
         echo "-----> calc_dF.py"; python calc_dF.py || exit 1

@@ -99,7 +99,7 @@ Ns = 1
 boundaries = ( -0.91, 1.09 )
 
 # Number of bins for each subdomain
-bins = (91,)*Ns
+bins = (100,)*Ns
 
 # Type of binning system for each subdomain (only equal width 'eq' currently available)
 rules = ('eq',)*Ns
@@ -166,7 +166,7 @@ window = 10
 
 # Iterations of 'sweeps' for multicanonical/TM
 # Set to -1 to run until stdev_converged
-iterations = 10
+iterations = 5
 
 # Standard devation of the last 'window' delta F values required for convergence
 stdev_converged = 1e-6
@@ -177,22 +177,19 @@ stdev_converged = 1e-6
 ##################################
 
 # What method to use to extract eigenvector from P matrix ('sequential', 'arpack')
-eigvec_method = 'arpack'
+eigvec_method = 'sequential'
 
 # Tolerance for arpack method
 eigs_tol = 1e-13
 
 # How often to refresh TM weights 
 # set to greater than 'sweeps_dF' to use input weights the entire time
-sweeps_refresh = 100000
+sweeps_refresh = 1000
 
 
 ##########################
 ## File names and paths ##
 ##########################
-
-# Name for file to contain free energy difference series
-deltaF_file = "DELTA_F.out"
 
 # Directory of Params.py and Python scripts
 pwd = os.path.dirname(os.path.realpath(__file__))

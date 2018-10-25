@@ -21,9 +21,14 @@ Run as e.g.      python convergence_wl.py plot
 import numpy as np
 import math as m
 import matplotlib.pyplot as plt
+import sys
 from sys import argv
 
+# Import params from parent directory
+path_to_params = '..'
+sys.path.insert(0, path_to_params) # looks in parent directory first
 from params import *
+sys.path.remove(path_to_params)
 
 
 # File names
@@ -56,11 +61,11 @@ cum_sweeps_all_s_T = np.array(cum_sweeps_all_s).T
 # ------------------------------------------------ #
 #  Compute sweeps per F, averaged over subdomains  #
 # ------------------------------------------------ #
-# Initialise arrays for mean + standard dev
-sweeps_mean = np.zeros(len(F))
-sweeps_stdev = np.zeros(len(F))
-cum_sweeps_mean = np.zeros(len(F))
-cum_sweeps_stdev = np.zeros(len(F))
+# Initialise arrays for mean + standard err
+sweeps_smean = np.zeros(len(F))
+err_sweeps_smean = np.zeros(len(F))
+cum_sweeps_smean = np.zeros(len(F))
+err_cum_sweeps_smean = np.zeros(len(F))
 
 # Iterate over different F factors
 for f in range(len(F)):
@@ -74,15 +79,20 @@ for f in range(len(F)):
         cum_sweeps_this_f[s] = cum_sweeps_all_s[s][f]
 
     # Mean and std deviation over subdomains
-    sweeps_mean[f] = np.mean(sweeps_this_f)
-    sweeps_stdev[f] = np.std(sweeps_this_f)
-    cum_sweeps_mean[f] = np.mean(cum_sweeps_this_f)
-    cum_sweeps_stdev[f] = np.std(cum_sweeps_this_f)
+    sweeps_smean[f] = np.mean(sweeps_this_f)
+    err_sweeps_smean[f] = np.std(sweeps_this_f) / np.sqrt(Ns_input)
+    cum_sweeps_smean[f] = np.mean(cum_sweeps_this_f)
+    err_cum_sweeps_smean[f] = np.std(cum_sweeps_this_f) / np.sqrt(Ns_input)
 
-# Standard error on the mean
-sweeps_stderr = sweeps_stdev / np.sqrt(Ns_input)
-cum_sweeps_stderr = cum_sweeps_stdev / np.sqrt(Ns_input)
 
+####################################################################
+## Simply save array of mean sweeps per F, for use by wl_to_dF.sh ##
+####################################################################
+if argv[1] == 'save':
+    output_file = sweeps_allF_smean.out
+    print "Saving sweeps to ", output_file
+    np.savetxt(output_file, sweeps_smean)
+    
 
 ##############################################
 ## Print for comparison between simulations ##

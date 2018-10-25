@@ -6,7 +6,7 @@ from sys import argv
 from params import *
 import domain as dom
 import initialise as ini
-import lsmc_dynamics as dyn
+import dynamics as dyn
 
 if algorithm == 'wang_landau':
     import wang_landau as alg
@@ -17,6 +17,12 @@ elif algorithm == 'transition':
 
 # What are we plotting?
 plottype = argv[1]
+
+# Can save the diffusivity
+if len(argv) > 2 and argv[2] == 'save':
+    save = True
+else:
+    save = False
 
 plt.rc('text',usetex=True)
 font = {'family' : 'serif',
@@ -60,6 +66,9 @@ if plottype == 'diff':
     ax3.set_xlabel(r"$\mu \times \beta/N$")
     ax3.set_ylabel("log(Diffusivity)")
     ax3.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+
+    if save == True:
+        global_diffusivity = []
 
     # ------------------------- #
     #  Iterate over subdomains  #
@@ -106,6 +115,15 @@ if plottype == 'diff':
         diffusivity[0] = diffusivity[1] + 0.25*(diffusivity[1] - diffusivity[4])
         diffusivity[-1] = diffusivity[-2] + 0.25*(diffusivity[-2] - diffusivity[-5])
   
+        if save == True:
+            if TRAP == True: # ignore overlap bins
+                lo = dom.subdom[s]['l_bin_olap']
+                hi = dom.subdom[s]['bins'] - dom.subdom[s]['h_bin_olap']
+                global_diffusivity.append( diffusivity[lo:hi] )
+            else:
+                global_diffusivity.append( diffusivity )
+
+
         # Take the log so we can more easily see how many O.O.M's it spans
         logD = np.log(diffusivity)
         logD -= np.min(logD)
@@ -115,6 +133,11 @@ if plottype == 'diff':
         ax2.plot(mu_bins, diffusivity, mkrs[s%2])
         ax3.plot(mu_bins, logD, mkrs[s%2])
 
+    # End loop over effective subdomains
+
+    if save == True:
+        global_diffusivity = np.array(global_diffusivity).flatten()
+        np.savetxt("global_diffusivity.out", global_diffusivity)
 
 
 ############################
@@ -263,71 +286,6 @@ if plottype == 'step':
     ax2.legend()
 
 
-####################################################
-## Size of attempted steps out of the (sub)domain ##
-####################################################
-if plottype == 'edge':
-
-    # ---------------- #
-    #  Make the plots  #
-    # ---------------- #
-    fig, ax = plt.subplots()
-    ax.set_title("Average size of attempted steps out of the (sub)domain")
-    ax.set_xlabel("Subdomain")
-    ax.set_ylabel(r"$\delta \mu$")
-
-    # Initialise lists
-    mean_list = []
-    ninetieth_list = []
-    bin_width_list = []
-
-    # ------------------------- #
-    #  Iterate over subdomains  #
-    # ------------------------- #
-    for s in range(Ns):
-        
-        lmean = []
-        rmean = []
-
-        for p in p_list[s::Ns_eff]:
-            # Get file names to load
-            extra_input_files = dyn.file_names('output', s, p)
-
-            # Load input files
-            left = np.loadtxt(extra_input_files['led'])
-            right = np.loadtxt(extra_input_files['red'])
-
-            # Mean step size in both directions
-            lmean.append(np.mean(left))
-            rmean.append(np.mean(right))
-
-        # Average over repeats within this subdomain
-        lmean = np.mean(lmean)
-        rmean = np.mean(rmean)
-
-        # Mean and 90th percentile in direction where they're larger
-        if lmean > rmean:
-            mean_list.append(lmean)
-            ninetieth_list.append( np.percentile(left, 90) )
-        else:
-            mean_list.append(rmean)
-            ninetieth_list.append( np.percentile(right, 90) )
-
-        # Compare with bin width for this subdomain
-        bin_width_list.append(dom.subdom[s]['bin_width'])
-
-    
-    # Add data from all subdomains to plot
-    subdoms = np.arange(Ns)
-    ax.plot(subdoms, mean_list, 'g--', label="Mean")
-    ax.plot(subdoms, ninetieth_list, 'r--', label="90th percentile")
-    ax.plot(subdoms, bin_width_list, 'ko', label="Bin width")
-    ax.legend()
-
-    # Want integer tick labels for subdomains
-    fig.gca().xaxis.set_major_locator(MaxNLocator(integer=True))
-
-
 ######################################################
 ## Fine-grained matrix for transition probabilities ##
 ######################################################
@@ -430,7 +388,55 @@ if plottype == 'mini':
     
     # Add colorbar and text to plot
     fig.colorbar(im)
-    
+
+
+#####################
+## Round trip time ##
+#####################
+if plottype == 'rt':
+
+    rt_sweeps_pmean_alls = []
+    rt_sweeps_pstderr_alls = []
+
+    # Iterate over different subdomains
+    for s in range(Ns_eff):
+
+        rt_sweeps_allp = []
+
+        # Iterate over different processes operating in the same subdomain/domain
+        for p in p_list[s::Ns_eff]
+
+            # Get file names to load
+            input_files = dyn.file_names('output', s, p)
+
+            # Load input files
+            this_rt_data = np.loadtxt(input_files['rt'])
+        
+            # Round trip time in sweeps
+            rt_sweeps_allp.append(this_rt_data[3])
+
+        # End loop over processes
+
+        # Mean and standard error for this subdomain
+        rt_sweeps_pmean = np.mean(rt_sweeps_allp)
+        rt_sweeps_pstderr = np.std(rt_sweeps_allp) / np.sqrt(len(rt_sweeps_allp))
+        
+        # Append to lists containing data from all subdoms
+        rt_sweeps_pmean_alls.append(rt_sweeps_pmean)
+        rt_sweeps_pstderr_alls.append(rt_sweeps_pstderr)
+
+    # End loop over effective subdomains
+
+    fig, ax = plt.subplots()
+    ax.set_title("Round trip time")
+    ax.set_xlabel("Sweeps")
+    ax.set_ylabel("Subdomain")
+
+    ax.errorbar(np.arange(Ns), rt_sweeps_pmean_alls, yerr=rt_sweeps_pstderr_alls, fmt='ko')
+
+
+
+
 print "Mu = E(%s) - E(%s)" %(alpha_type, beta_type)
 
 plt.show()

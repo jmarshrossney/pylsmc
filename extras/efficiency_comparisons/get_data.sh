@@ -9,6 +9,8 @@ declare -a LEVEL1=("" "")
 declare -a LEVEL2=("" "")
 declare -a LEVEL3=("" "")
 
+HOMEDIR=$(pwd)
+
 # Keep track of the number of lines added to files
 Nl=0
 
@@ -59,9 +61,8 @@ do
             elif [ "$1" == rt ]
             then
                 echo -n "grabbing round trip time ..."
-                tRT=$(sed -n '4p' round_trips.out)
-                sid=$(grep "simID = " params.py | awk '{print $3}')
-                echo "$sid $tRT" >> $HOMEDIR/$2
+                cp $HOMEDIR/round_trips.py .
+                python round_trips.py >> $HOMEDIR/$2
                 echo "done."
             
             else

@@ -88,8 +88,9 @@ for ifile in range(Nfiles):
     # ------------------------------------------ #
     # Initialise lists to hold averages over repeats
     sweeps_rmean_alls = []
+    err_sweeps_rmean_alls = []
     sweeps_rmean_smean = []
-    sweeps_rmean_serr = []
+    err_sweeps_rmean_smean = []
 
     unique_Ns = []
     N_repeats = []
@@ -119,13 +120,16 @@ for ifile in range(Nfiles):
         # Data in form (rows, cols) = (repeats, subdoms)
         data_to_average = np.array(data_to_average)
 
-        # Average over repeats, subdoms still separate (useful to see trends)
+        # Average over repeats; subdoms still separate (useful to see trends)
         sweeps_rmean_alls.append( np.mean(data_to_average, axis=0) )
+        err_sweeps_rmean_alls.append( np.std(data_to_average, axis=0) / \
+                np.sqrt(len(data_to_average[:,0])) )
     
         # Average over repeats AND subdoms
         data_to_average = data_to_average.flatten()
         sweeps_rmean_smean.append( np.mean(data_to_average) )
-        sweeps_rmean_serr.append( np.std(data_to_average) / np.sqrt(len(data_to_average)) )
+        err_sweeps_rmean_smean.append( np.std(data_to_average) / \
+                np.sqrt(len(data_to_average)) )
 
     
     # End loop over unique values of simID
