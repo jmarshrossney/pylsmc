@@ -303,7 +303,7 @@ def run(atoms_alpha, atoms_beta, disp, binned_data, dyn_data, p, s, F=1, relax=F
                 dyn.update_func(
                         dyn_data, mu_bins, old_mu, old_index, s,
                         cuts, rtrips,
-                        False, abs(new_mu - old_mu), abs(delta_local_energies[ACT]))
+                        False, abs(new_mu-old_mu), abs(delta_local_energies[ACT]))
               
                 if TRAP == True:
                     dyn.update_minimat(dyn_data, mu_bins, old_mu, old_index, s,
@@ -345,6 +345,7 @@ def run(atoms_alpha, atoms_beta, disp, binned_data, dyn_data, p, s, F=1, relax=F
         #sampling_adjust = np.exp( B*intra_bin_weight ) # doesn't work: centre of bins?"""
         
         old_index_copy = old_index # to update Cmat and extra info after move evaluation
+        dmu = abs(new_mu - old_mu) # to update dynamics
 
         # Update things according to whether move accepted
         if accepted == True:
@@ -386,7 +387,7 @@ def run(atoms_alpha, atoms_beta, disp, binned_data, dyn_data, p, s, F=1, relax=F
             dyn.update_func(
                     dyn_data, mu_bins, old_mu, old_index, s,
                     cuts, rtrips,
-                    accepted, abs(new_mu-old_mu), abs(delta_local_energies[ACT]))
+                    accepted, dmu, abs(delta_local_energies[ACT]))
             
             if TRAP == True:
                 dyn.update_minimat(dyn_data, mu_bins, old_mu, old_index, s,

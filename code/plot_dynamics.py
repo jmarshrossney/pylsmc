@@ -318,7 +318,7 @@ if plottype == 'mini':
         minimat = minimat / np.sum(minimat, axis=0)
 
         # Load mu arrays for bins and minibins
-        mu_bins = dom.get_local_mu_bins(s)
+        mu_bins = dom.get_local_mu_bins(s) * B / float(Natoms)
         window_width = dyn.subdom[s]['win_width']
         mini_mu_bins = np.linspace(0, window_width, dyn.minibins_per_window) - 0.5*window_width
 
@@ -404,7 +404,7 @@ if plottype == 'rt':
         rt_sweeps_allp = []
 
         # Iterate over different processes operating in the same subdomain/domain
-        for p in p_list[s::Ns_eff]
+        for p in p_list[s::Ns_eff]:
 
             # Get file names to load
             input_files = dyn.file_names('output', s, p)

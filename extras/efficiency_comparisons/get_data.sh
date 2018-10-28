@@ -43,7 +43,7 @@ do
             if [ "$1" == wl ]
             then
                 echo -n "running convergence_wl.py ..."
-                python convergence_wl.py report >> $HOMEDIR/$2
+                python convergence_wl/convergence_wl.py report >> $HOMEDIR/$2
                 Nl=$((Nl+1))
                 echo "done."
 
@@ -53,9 +53,9 @@ do
                 python convergence_dF.py report >> $HOMEDIR/$2
                 Nl=$((Nl+1))
                 
-                echo -n "adding to stdev_series.txt ..."
-                cat stdev_series.txt >> $HOMEDIR/stdev_$2
-                echo "-1 -1" >> $HOMEDIR/stdev_$2
+                echo -n "adding to series_$2 ..."
+                cat deltaF_mean_series.txt >> $HOMEDIR/series_$2
+                echo "-1 -1" >> $HOMEDIR/series_$2
                 echo "done."
             
             elif [ "$1" == rt ]

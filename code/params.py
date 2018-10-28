@@ -36,16 +36,16 @@ params_series_file = None
 ########################
 
 # Options: 'wang_landau', 'multicanonical' or 'transition'
-algorithm = 'wang_landau'
+algorithm = 'transition'
 
 # Do we want to save a data as a series (for histogram reweighting)?
-track_series = False
+track_series = True
 
 # Do we want to record the dynamics of the simulation?
 track_dynamics = False
 
 # Do we want to use interpolated or discrete weights?
-use_interpolated_weights = True
+use_interpolated_weights = False
 
 
 ########################
@@ -166,7 +166,7 @@ window = 10
 
 # Iterations of 'sweeps' for multicanonical/TM
 # Set to -1 to run until stdev_converged
-iterations = 5
+iterations = 10
 
 # Standard devation of the last 'window' delta F values required for convergence
 stdev_converged = 1e-6

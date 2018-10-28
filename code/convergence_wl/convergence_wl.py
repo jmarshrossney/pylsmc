@@ -89,7 +89,7 @@ for f in range(len(F)):
 ## Simply save array of mean sweeps per F, for use by wl_to_dF.sh ##
 ####################################################################
 if argv[1] == 'save':
-    output_file = sweeps_allF_smean.out
+    output_file = "sweeps_allF_smean.out"
     print "Saving sweeps to ", output_file
     np.savetxt(output_file, sweeps_smean)
     

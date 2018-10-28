@@ -228,7 +228,7 @@ if argv[1] in ('plot', 'report'):
         ax.plot(sweeps_series[:-1], deltaF_series[:-1:1], mkr, markersize=4, label=r"raw $\Delta F$")
         ax.plot(sweeps_series[-1], deltaF_series[-1], 'ro', markersize=4)
 
-
+        ax.ticklabel_format(useOffset=False)
         ax.legend()
         plt.tight_layout()
         plt.show()
@@ -243,13 +243,14 @@ if argv[1] in ('plot', 'report'):
         # Useful for comparison between simulations run for same Nsweeps
         print simID, Ns, sweeps_series[-1], mean, stdev, stderr
 
-        # Save a time series of standard deviations
-        save_data = np.zeros( (len(stdev_series)+1, 2) )
+        # Save a time series of mean, standard deviations
+        save_data = np.zeros( (len(stdev_series)+1, 3) )
         save_data[0,0] = simID
         save_data[0,1] = Ns
+        save_data[0,2] = window
         save_data[1:,0] = sweeps_series[window:]
-        save_data[1:,1] = stdev_series
-        np.savetxt("stdev_series.txt", save_data)
-        
-
+        save_data[1:,1] = mean_series
+        save_data[1:,2] = stdev_series
+        np.savetxt("deltaF_mean_series.txt", save_data)
+       
 

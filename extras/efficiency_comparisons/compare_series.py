@@ -37,12 +37,26 @@ font = {'family' : 'serif',
 plt.rc('font', **font)
 colors = ('b', 'g', 'm', 'c')
 
-# Create plot
-fig, ax = plt.subplots()
-ax.tick_params(direction='in', top=True, right=True)
-ax.set_xlabel("Sweeps")
-ax.set_ylabel(r"$\log_{10}{(\sigma_{dF)}}$")
-ax.set_title("Time series of standard deviation")
+# Create plot for standard deviation
+fig1, ax1 = plt.subplots()
+ax1.tick_params(direction='in', top=True, right=True)
+ax1.set_xlabel("Sweeps")
+ax1.set_ylabel(r"$\log_{10}{(\sigma_{\Delta F)}}$")
+ax1.set_title("Std dev of a moving window for individual simulations")
+
+# Create plot for mean deltaF
+fig2, ax2 = plt.subplots()
+ax2.tick_params(direction='in', top=True, right=True)
+ax2.set_xlabel("Sweeps")
+ax2.set_ylabel(r"$\bar{\Delta F}$")
+ax2.set_title("Mean $\Delta F$")
+
+# Create plot for standard error on mean
+fig3, ax3 = plt.subplots()
+ax3.tick_params(direction='in', top=True, right=True)
+ax3.set_xlabel("Sweeps")
+ax3.set_ylabel(r"$\sigma_{\Delta F} / \sqrt{N_{rep}}$")
+ax3.set_title(r"Std error on $\bar{\Delta F}$")
 
 # Input file names given as arguments
 input_files = argv[1:]
@@ -57,11 +71,13 @@ if Nfiles == 0:
 # Iterate over input files
 for ifile in range(Nfiles):
 
-    # Initialise lists
+    # Initialise lists to hold data from all repeats
     simID = []
     Ns = []
-    dF_stdev = []
+    window = []
     sweeps_per_s = []
+    dF_mean_allr = []
+    dF_stdev_allr = []
     
     # Read input data
     print "Reading data fom file ", input_files[ifile]
@@ -79,15 +95,20 @@ for ifile in range(Nfiles):
         
         simID.append(input_data[rlo,0])
         Ns.append(input_data[rlo,1])
+        window.append(input_data[rlo,2])
         sweeps_per_s.append(input_data[rlo+1:rhi,0])
-        dF_stdev.append(input_data[rlo+1:rhi,1])
+        dF_mean_allr.append(input_data[rlo+1:rhi,1])
+        dF_stdev_allr.append(input_data[rlo+1:rhi,2])
 
         rlo = rhi + 1
 
-  
+    # Initialise lists for averages over repeats
     unique_sweeps_per_s = []
-    dF_stdev_mean = []
-    dF_stdev_stderr = []
+    dF_mean_rmean = []
+    dF_mean_rerr = []
+    dF_stdev_rmean = []
+    dF_stdev_rerr = []
+    
     unique_Ns = []
     N_repeats_list = []
     unique_simID = np.sort(np.array(list(set(simID)), dtype=int)) # low->high simID
@@ -115,9 +136,11 @@ for ifile in range(Nfiles):
 
         # Skip the averaging if only one sim
         if N_repeats == 1:
-            unique_sweeps_per_s.append(sweeps_per_s[i0])
-            dF_stdev_rmean.append( dF_stdev[i0] )
-            dF_stdev_rstderr.append( np.zeros(len(dF_stdev[i0])) )
+            unique_sweeps_per_s.append( sweeps_per_s[i0] )
+            dF_mean_rmean.append( dF_mean_allr[i0] )
+            dF_mean_rerr.append( np.zeros(len(dF_mean_allr[i0]) )
+            dF_stdev_rmean.append( dF_stdev_allr[i0] )
+            dF_stdev_rerr.append( np.zeros(len(dF_stdev_allr[i0])) )
             continue
 
         # Sweeps array taken from simulation with the most sweeps
@@ -132,22 +155,34 @@ for ifile in range(Nfiles):
        
         # Create wierd array so we can take averages over data of different lengths
         max_len = len(sweeps_per_s[i_max_sweeps])
-        data_to_average = np.ma.empty( (max_len, N_repeats) ) # (rows=sweeps, cols=sims)
-        data_to_average.mask = True
+        dF_mean_to_average = np.ma.empty( (max_len, N_repeats) ) # (rows=sweeps, cols=sims)
+        dF_mean_to_average.mask = True
+        dF_stdev_to_average = np.ma.empty( (max_len, N_repeats) ) # (rows=sweeps, cols=sims)
+        dF_stdev__average.mask = True
 
-        # Fill in array with stdev values
+        # Fill in array with mean, stdev values
         for j in range(len(index_list)):
             i = index_list[j]
-            this_data = dF_stdev[i]
-            data_to_average[:this_data.shape[0],j] = this_data
+
+            this_mean_data = dF_mean_allr[i]
+            this_stdev_data = dF_stdev_allr[i]
+
+            dF_mean_to_average[:this_mean_data.shape[0],j] = this_mean_data
+            dF_stdev_to_average[:this_stdev_data.shape[0],j] = this_stdev_data
 
         # Average over repeats for each value of sweeps
-        data_averaged = np.array( data_to_average.mean(axis=1) )
-        dF_stdev_mean.append(data_averaged)
+        dF_mean_averaged = np.array( dF_mean_to_average.mean(axis=1) )
+        dF_stdev_averaged = np.array( dF_stdev_to_average.mean(axis=1) )
+        dF_mean_err = np.array( dF_mean_to_average.std(axis=1) ) / np.sqrt(N_repeats)
+        dF_stdev_err = np.array( dF_stdev_to_average.std(axis=1) ) / np.sqrt(N_repeats)
+        
+        # Add to list of averages for all simID
+        dF_mean_rmean.append(dF_mean_averaged)
+        dF_stdev_rmean.append(dF_stdev_averaged)
 
         # Append error on the mean to list
-        data_stderr = np.array( data_to_average.std(axis=1) ) / np.sqrt(N_repeats)
-        dF_stdev_stderr.append( data_stderr )
+        dF_mean_rerr.append( dF_mean_err )
+        dF_stdev_rerr.append( dF_stdev_err )
      
         
     # End loop of unique simID's
@@ -160,9 +195,9 @@ for ifile in range(Nfiles):
     Nsim = len(simID) # now this is number of sims after averaging
 
 
-    # ------------- #
-    #  Add to plot  #
-    # ------------- #
+    # -------------- #
+    #  Add to plots  #
+    # -------------- #
     # Input file is a key to access dictionary, value describes the simulation
     label = sim_info.file_labels[ input_files[ifile] ]
 
@@ -172,18 +207,36 @@ for ifile in range(Nfiles):
         # Simulation label and N repeats in legend
         ilabel = sim_info.sim_labels[sid] + " (" + str(N_repeats_list[i]) + " repeats)"
         ilabel = label + ": " + ilabel
-
-        # Log plot is clearer
-        logdata = np.log10(dF_stdev_mean[i])
+        
+        # ------------------------- #
+        #  Standard deviation plot  #
+        # ------------------------- #
+        # log plot is clearer
+        logdata = np.log10(dF_stdev_rmean[i])
         
         # Propagate errors on logdata
-        logdata_plus_err = np.log10(dF_stdev_mean[i] + dF_stdev_stderr[i])
+        logdata_plus_err = np.log10(dF_stdev_rmean[i] + dF_stdev_rerr[i])
         logdata_err = np.abs(logdata_plus_err - logdata)
         
         # Sometimes it's clearer without the error bars...
         logdata_err = np.zeros(len(logdata))
+        
+        ax1.errorbar(sweeps_per_s[i], logdata, yerr=logdata_err, fmt='-', label=ilabel)
+        
+        # ------------------ #
+        #  Mean deltaF plot  #
+        # ------------------ #
+        #error_to_plot = dF_mean_rerr[i]
+        error_to_plot = np.zeros(len(dF_mean_rmean[i]))
+        
+        ax2.error(sweeps_per_s[i], dF_mean_rmean[i], yerr=error_to_plot, fmt='-', label=ilabel)
 
-        ax.errorbar(sweeps_per_s[i], logdata, yerr=logdata_err, fmt='-', label=ilabel)
+        # -------------------- #
+        #  Error on mean plot  #
+        # -------------------- #
+        ax3.plot(sweeps_per_s[i], dF_mean_rerr[i], '-', label=ilabel)
+
+        
         i += 1
 
 
