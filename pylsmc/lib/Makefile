@@ -1,4 +1,5 @@
 SHELL = /bin/sh
+ENV = $(CONDAHOME)/envs/lsmc
 
 # Compilers and flags
 F90       = gfortran
@@ -6,7 +7,7 @@ CC        = gcc
 SWIG      = swig
 LD        = ld
 FFLAGS    = -fPIC -O3
-CFLAGS    = -fPIC -O3 -I/usr/include/python2.7/ -I/home/joe/.local/lib/python2.7/site-packages/numpy/core/include/
+CFLAGS    = -fPIC -O3 -I$(ENV)/include/python3.9/ -I$(ENV)/lib/python3.9/site-packages/numpy/core/include/
 
 # Objects to build into a library
 OBJECTS    = util.o energy.o energy_wrap.o
